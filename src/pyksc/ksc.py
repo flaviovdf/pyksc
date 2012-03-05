@@ -74,6 +74,8 @@ def _compute_centroids(tseries, assign, num_clusters, to_shift=None):
             m_mat = i_mat - x_mat
 
             #compute eigenvalues and chose the vector for the smallest one
+            #TODO: Check if using scipy's linalg is faster (has more options
+            #      such as finding only the smallest eigval)
             eig_vals, eig_vectors = LA.eigh(m_mat)
             centroids[k] = eig_vectors[:,eig_vals.argmin()]
         else:
