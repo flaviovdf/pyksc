@@ -4,6 +4,13 @@ PY-KSC
 Implementation of the KSC time series clustering algorithm.
 See [_1] for details:
 
+Dependencies
+------------
+   * Numpy
+   * Scipy
+   * Cython
+   * Matplotlib
+
 References
 ----------
 .. [1] J. Yang and J. Leskovec, 

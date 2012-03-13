@@ -39,8 +39,8 @@ def main(features_fpath, classes_fpath):
     y = np.loadtxt(classes_fpath)
     
     forest = ExtraTreesClassifier(max_depth=4,
-                                    criterion="entropy",
-                                    compute_importances=True)
+                                  criterion="entropy",
+                                  compute_importances=True)
     
     scores = cross_val_score(forest, X, y, score_func=f1_score, cv=5)
     print(scores)
@@ -57,19 +57,6 @@ def main(features_fpath, classes_fpath):
                                        importances[indices[f]]))
         
     export_graphviz(forest, 'bala.dot')
-#
-#    import pylab as pl
-#    pl.figure()
-#    pl.title("Feature importances")
-#    
-#    for tree in forest.estimators_:
-#        tree.export_graphviz(tree, 'bala.dot')
-#        pl.plot(xrange(len(tree.feature_importances_[indices])), 
-#                tree.feature_importances_[indices], "r")
-#    
-#    pl.plot(xrange(len(importances[indices])), 
-#            importances[indices], "b")
-#    pl.savefig('bah.png')
 
 def create_parser(prog_name):
     
