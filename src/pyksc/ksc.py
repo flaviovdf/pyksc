@@ -37,7 +37,7 @@ def _compute_centroids(tseries, assign, num_clusters, to_shift=None):
         The number of clusters being searched for
     to_shift (optional): array of ints (size = n_series)
         Determines if time series should be shifted, if different from `None`.
-        In this case, each serie will be shifted by the corresponding amount
+        In this case, each series will be shifted by the corresponding amount
         in the array.
     '''
 
