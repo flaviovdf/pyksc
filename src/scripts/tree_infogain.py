@@ -2,13 +2,30 @@
 
 from __future__ import division, print_function
 
+from sklearn.cross_validation import cross_val_score 
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.preprocessing import scale
+from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import export_graphviz
 
 import argparse
 import numpy as np
 import sys
 import traceback
+
+#def find_best_parameters(X_model, y_model, kernel):
+#    
+#    param_grid = {
+#                  'C':[0.1, 0.5, 1, 5, 10, 50, 100], 
+#                  'gamma':[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1]
+#                  }
+#        
+#    clf = GridSearchCV(svc, param_grid, n_jobs=-1, score_func=f1_score)
+#    clf = clf.fit(X_model, y_model)
+#    best_clf = clf.best_estimator
+#    
+#    return best_clf
 
 def main(features_fpath, classes_fpath):
     
@@ -21,18 +38,25 @@ def main(features_fpath, classes_fpath):
     X = scale(np.genfromtxt(features_fpath)[:,1:].copy())
     y = np.loadtxt(classes_fpath)
     
-    forest = ExtraTreesClassifier(n_estimators=250,
+    forest = ExtraTreesClassifier(max_depth=4,
+                                  criterion="entropy",
                                   compute_importances=True)
     
+    scores = cross_val_score(forest, X, y, score_func=f1_score, cv=5)
+    print(scores)
+    
     forest.fit(X, y)
+    
     importances = forest.feature_importances_
     indices = np.argsort(importances)[::-1]
     
     # Print the feature ranking
     print("Feature ranking:")
-    for f in xrange(10):
+    for f in xrange(len(importances[indices])):
         print("%d. feature %s (%f)" % (f + 1, names[indices[f]], 
                                        importances[indices[f]]))
+        
+    export_graphviz(forest, 'bala.dot')
 
 def create_parser(prog_name):
     

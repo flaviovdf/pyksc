@@ -74,6 +74,8 @@ def _compute_centroids(tseries, assign, num_clusters, to_shift=None):
             m_mat = i_mat - x_mat
 
             #compute eigenvalues and chose the vector for the smallest one
+            #TODO: Check if using scipy's linalg is faster (has more options
+            #      such as finding only the smallest eigval)
             eig_vals, eig_vectors = LA.eigh(m_mat)
             centroids[k] = eig_vectors[:,eig_vals.argmin()]
         else:
@@ -82,7 +84,46 @@ def _compute_centroids(tseries, assign, num_clusters, to_shift=None):
     return centroids
 
 def _base_ksc(tseries, initial_centroids, n_iters=-1):
+    '''
+    This is the base of the KSC algorithm. It follows the same idea of a K-Means
+    algorithm. Firstly, we assign time series to a new cluster based on the
+    distance to the centroids. For each time series, it is computed the best
+    shift to minimize the distance to the closest centroid.
+     
+    The assignment step is followed by an update step where new centroids are 
+    computed based on the new clustering (based on the update step).
+    
+    Both steps above are repeated `n_iters` times. If this parameter is negative
+    then the steps are repeated until convergence, that is, until no time series
+    changes cluster between consecutive steps. 
 
+    Arguments
+    ---------
+    tseries: a matrix of shape (number of time series, size of each series)
+        The time series to cluster
+    initial_centroids: a matrix of shape (num. of clusters, size of time series)
+        The initial centroid estimates
+    n_iters: int
+        The number of iterations which the algorithm will run
+
+    Returns
+    -------
+    centroids: a matrix of shape (num. of clusters, size of time series)
+        The final centroids found by the algorithm
+    assign: an array of num. series size
+        The cluster id which each time series belongs to
+    best_shift: an array of num. series size
+        The amount shift amount performed for each time series
+    cent_dists: a matrix of shape (num. centroids, num. series)
+        The distance of each centroid to each time serie
+
+    References
+    ----------
+    .. [1] Wikipedia, 
+    "K-means clustering"  
+    http://en.wikipedia.org/wiki/K-means_clustering
+    '''
+    
     num_clusters = initial_centroids.shape[0]
     num_series = tseries.shape[0]
 
@@ -119,6 +160,8 @@ def _base_ksc(tseries, initial_centroids, n_iters=-1):
     return centroids, assign, best_shift, cent_dists
 
 def _bestcost_ksc(tseries, num_clusters, n_iters=-1, n_runs=10):
+    
+    
     min_cost = float('+inf')
     
     best_cents = None
