@@ -1,13 +1,16 @@
 #-*- coding: utf8
 '''
-Implementation of some machine Learning regression models. Here we provide 
-wrappers around scikit-learn regression classes.
+Implementation of some Machine Learning regression models. Basically, we 
+implement simple wrappers around the scikit-learn library which performs
+the transformations and specific training models we need.
 '''
 from __future__ import division, print_function
 
+from sklearn.base import clone
 from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin 
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model.base import LinearRegression
+from sklearn.metrics import mean_square_error
 from sklearn.utils.validation import safe_asarray
 
 import numpy as np
@@ -19,7 +22,8 @@ class RSELinearRegression(LinearRegression):
     absolute error.
     
     This class will use the same parameters and arguments as:
-    sklearn.linear_model.LinearRegression
+    sklearn.linear_model.LinearRegression. Different from the linear
+    regression, we set `fit_intecept` to False by default.
     
     Parameters
     ----------
@@ -35,8 +39,8 @@ class RSELinearRegression(LinearRegression):
     sklearn.linear_model.LinearRegression
     '''
     
-    def __init__(self, fit_intercept=True, normalize=False, copy_X=True):
-        super(RSELinearRegression, self).__init__(fit_intercept, normalize,
+    def __init__(self, fit_intercept=False, normalize=False, copy_X=True):
+        super(RSELinearRegression, self).__init__(fit_intercept, normalize, 
                                                   copy_X)
         
     def fit(self, X, y):
@@ -44,7 +48,10 @@ class RSELinearRegression(LinearRegression):
         y = np.asarray(y)
         
         X = (X.T / y).T
-        return super(RSELinearRegression, self).fit(X, y)
+        return super(RSELinearRegression, self).fit(X, np.ones(len(y)))
+
+    def score(self, X, y):
+        return mean_square_error(y / y, self.predict(X) / y)
 
 class MultiClassRegression(BaseEstimator, RegressorMixin):
     '''
@@ -57,26 +64,19 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
 
     Parameters
     ----------
-    clf_class : a subclass of `sklearn.base.ClassifierMixin`
-        this is a class object and not a instance of the class
-    clf_params : dict
-        the parameters for the classifier
-    regression_class : a subclass of `sklearn.base.RegressorMixin`
-        this is a class object and not a instance of the class
-    regression_params: dict
-        the parameters used for building the regression model
+    clf : an instance of `sklearn.base.ClassifierMixin`
+        this is the classifier to be used. Pass a grid search object when
+        searching for best parameters is needed
+    regr : a subclass of `sklearn.base.RegressorMixin`
+        this is a class object and not a instance of the class. Pass a grid 
+        search object when searching for best parameters is needed
     '''
     
-    def __init__(self, clf_class, clf_params, 
-                 regression_class, regression_params):
-        
+    def __init__(self, clf, regr):
         super(MultiClassRegression, self).__init__()
         
-        self.clf_class = clf_class
-        self.clf_params = clf_params
-        self.regression_class = regression_class
-        self.regression_params = regression_params
-        
+        self.clf = clf
+        self.regr = regr
         self.clf_model = None
         self.regression_models = None
     
@@ -102,18 +102,16 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
         y_clf = np.asarray(y_clf)
         y_regression = np.asarray(y_regression)
         
-        self.clf_model = self.clf_class.fit(X, y_clf)
+        self.clf_model = self.clf.fit(X, y_clf)
         
         classes = set(y_clf)
         self.regression_models = {}
         
+        #TODO: check if we can use scikits Parallel class for parallel fit
         for class_ in classes:
             examples = y_clf == class_
-            
-            X_class = X[examples]
-            y_class = y_regression[examples]
-            self.regression_models[class_] = self.regression_class.fit(X_class, 
-                                                                       y_class)
+            self.regression_models[class_] = \
+                    clone(self.regr).fit(X[examples], y_regression[examples])
         
         return self
 
@@ -130,13 +128,21 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
         C : array, shape = [n_samples]
             Returns predicted values.
         """
+        
+        X = safe_asarray(X)
         y_clf_predicted = np.asarray(self.clf_model.predict(X))
         classes = set(y_clf_predicted)
         
-        y_predicted = np.zeros(X.shape[0], dtype='f')
+        #TODO: check if we can use scikits Parallel class for parallel fit
+        y_predicted = None
         for class_ in classes:
             examples = y_clf_predicted == class_
             regression_model = self.regression_models[class_]
-            y_predicted[examples] = regression_model.predict(X[examples])  
+            
+            regression_prediction = regression_model.predict(X[examples])
+            if y_predicted is None:
+                y_predicted = np.zeros(X.shape[0], regression_prediction.dtype)
+            
+            y_predicted[examples] = regression_model.predict(X[examples])
 
         return y_predicted

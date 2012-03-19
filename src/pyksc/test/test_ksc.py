@@ -32,6 +32,9 @@ class TestKSC(unittest.TestCase):
         del shift
         
         self.assertEqual(len(set(assign)), k)
+        self.assertEqual(sum(assign == assign[0]), 8)
+        self.assertEqual(sum(assign == assign[-1]), 4)
+        
         self.assertEqual(len(set(assign[:8])), 1)
         self.assertEqual(len(set(assign[8:])), 1)
         self.assertFalse(set(assign[:8]) == set(assign[8:]))
