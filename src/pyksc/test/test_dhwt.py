@@ -11,7 +11,7 @@ import unittest
 
 import numpy as np
 
-class TestDist(unittest.TestCase):
+class TestWavelets(unittest.TestCase):
 
     def test_all(self):
         x = np.array([])
