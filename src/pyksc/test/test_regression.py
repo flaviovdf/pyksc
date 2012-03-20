@@ -16,8 +16,11 @@ import unittest
 class TestRSELinearRegression(unittest.TestCase):
     
     def test_rse(self):
-        assert_almost_equal(regression.mean_relative_square_error([1, 1, 1], 
-                                                                  [0, 0, 0]), 1)
+        assert_equal(regression.mean_relative_square_error([1, 1, 1], 
+                                                           [0, 0, 0]), 1)
+
+        assert_almost_equal(regression.mean_relative_square_error([10, 10, 10],\
+                                                    [1, 2, 3]), 0.6466, 3)
                 
         assert_equal(regression.mean_relative_square_error([1, 0.5, 0.8], 
                                                            [1, 0.5, 0.8]), 0)
