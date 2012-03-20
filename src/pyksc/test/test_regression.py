@@ -96,6 +96,33 @@ class TestMultiClassRegression(unittest.TestCase):
         assert_equal(p[1], p[3])
         self.assertTrue(p[0] != p[1])
 
+    def test_multiclass_parallel(self):
+        X = [[1, 2],
+             [1, 2],
+             [4, 8],
+             [4, 8],
+             [200, 200],
+             [199, 200.1],
+             [200.2, 198]]
+        
+        y_clf = [0, 0, 0, 0, 1, 1, 1]
+        y_regression = [1, 1, 2, 2, 100, 100, 100]
+        
+        regr_class = regression.RSELinearRegression(fit_intercept=False)
+        clf_class = linear_model.LogisticRegression()
+        
+        multi_class = regression.MultiClassRegression(clf_class, regr_class,
+                                                      n_jobs=2)
+        
+        model = multi_class.fit(X, y_clf, y_regression)
+        p = model.predict([[1, 2], 
+                           [200, 200], 
+                           [1, 2], 
+                           [200, 200]])
+        assert_equal(p[0], p[2])
+        assert_equal(p[1], p[3])
+        self.assertTrue(p[0] != p[1])
+
     def test_with_grid_search(self):
         X = [[1, 2],
              [1, 2],

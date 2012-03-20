@@ -13,6 +13,7 @@ from sklearn.linear_model.base import LinearRegression
 from sklearn.utils.validation import safe_asarray
 
 import numpy as np
+from sklearn.externals.joblib.parallel import Parallel, delayed
 
 def mean_relative_square_error(y_true, y_pred):
     """
@@ -67,10 +68,16 @@ class RSELinearRegression(LinearRegression):
         y = np.asarray(y)
         
         X = (X.T / y).T
-        return super(RSELinearRegression, self).fit(X, np.ones(len(y)))
+        return super(RSELinearRegression, self).fit(X, y / y)
 
     def score(self, X, y):
         return mean_relative_square_error(y, self.predict(X))
+
+def _fit_helper(class_, X, y, learner):
+    return class_, clone(learner).fit(X, y)
+
+def _predict_helper(examples, X, learner):
+    return examples, learner.predict(X)
 
 class MultiClassRegression(BaseEstimator, RegressorMixin):
     '''
@@ -91,11 +98,15 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
         search object when searching for best parameters is needed
     '''
     
-    def __init__(self, clf, regr):
+    def __init__(self, clf, regr, n_jobs=1, verbose=0, pre_dispatch='2*n_jobs'):
         super(MultiClassRegression, self).__init__()
         
         self.clf = clf
         self.regr = regr
+        self.n_jobs = n_jobs
+        self.verbose = verbose
+        self.pre_dispatch = pre_dispatch
+        
         self.clf_model = None
         self.regression_models = None
     
@@ -124,13 +135,19 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
         self.clf_model = self.clf.fit(X, y_clf)
         
         classes = set(y_clf)
-        self.regression_models = {}
+        regr = self.regr
         
-        #TODO: check if we can use scikits Parallel class for parallel fit
-        for class_ in classes:
-            examples = y_clf == class_
-            self.regression_models[class_] = \
-                    clone(self.regr).fit(X[examples], y_regression[examples])
+        def _generator():
+            for class_ in classes:
+                examples = y_clf == class_
+                yield class_, X[examples], y_regression[examples], regr
+        
+        out = Parallel(self.n_jobs, self.verbose, self.pre_dispatch)(\
+                delayed(_fit_helper)(*params) for params in _generator())
+        
+        self.regression_models = {}
+        for class_, regr_model in out:
+            self.regression_models[class_] = regr_model
         
         return self
 
@@ -152,16 +169,19 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
         y_clf_predicted = np.asarray(self.clf_model.predict(X))
         classes = set(y_clf_predicted)
         
-        #TODO: check if we can use scikits Parallel class for parallel fit
+        def _generator():
+            for class_ in classes:
+                examples = y_clf_predicted == class_
+                yield examples, X[examples], self.regression_models[class_]
+        
+        out = Parallel(self.n_jobs, self.verbose, self.pre_dispatch)(\
+                delayed(_predict_helper)(*params) for params in _generator())
+        
         y_predicted = None
-        for class_ in classes:
-            examples = y_clf_predicted == class_
-            regression_model = self.regression_models[class_]
-            
-            regression_prediction = regression_model.predict(X[examples])
+        for examples, predicted in out:
             if y_predicted is None:
-                y_predicted = np.zeros(X.shape[0], regression_prediction.dtype)
+                y_predicted = np.zeros(X.shape[0], predicted.dtype)
+            y_predicted[examples] = predicted
             
-            y_predicted[examples] = regression_model.predict(X[examples])
 
         return y_predicted
