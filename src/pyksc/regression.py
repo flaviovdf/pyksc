@@ -10,11 +10,30 @@ from sklearn.base import clone
 from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin 
 from sklearn.linear_model.base import LinearRegression
-from sklearn.metrics import mean_square_error
 from sklearn.utils.validation import safe_asarray
 
 import numpy as np
 
+def mean_relative_square_error(y_true, y_pred):
+    """
+    Mean relative square error regression loss
+
+    Positive floating point value: the best value is 0.0.
+
+    Parameters
+    ----------
+    y_true : array-like
+
+    y_pred : array-like
+
+    Returns
+    -------
+    mrse : float
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    return np.mean((y_true - y_pred) ** 2)
+    
 class RSELinearRegression(LinearRegression):
     '''
     Implements an ordinary least squares (OLS) linear regression in which
@@ -51,7 +70,7 @@ class RSELinearRegression(LinearRegression):
         return super(RSELinearRegression, self).fit(X, np.ones(len(y)))
 
     def score(self, X, y):
-        return mean_square_error(y / y, self.predict(X) / y)
+        return mean_relative_square_error(y, self.predict(X))
 
 class MultiClassRegression(BaseEstimator, RegressorMixin):
     '''

@@ -12,7 +12,15 @@ from sklearn.grid_search import GridSearchCV
 import numpy as np
 import unittest
 
+
 class TestRSELinearRegression(unittest.TestCase):
+    
+    def test_rse(self):
+        assert_almost_equal(regression.mean_relative_square_error([1, 1, 1], 
+                                                                  [0, 0, 0]), 1)
+                
+        assert_equal(regression.mean_relative_square_error([1, 0.5, 0.8], 
+                                                           [1, 0.5, 0.8]), 0)
 
     def test_rse_fit_one_attr(self):
         
