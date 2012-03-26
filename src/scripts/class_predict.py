@@ -2,10 +2,6 @@
 
 from __future__ import division, print_function
 
-from scipy.sparse import hstack
-
-from scripts.tags_io import vectorize_videos
-
 from sklearn.cross_validation import cross_val_score
 from sklearn.cross_validation import StratifiedKFold
 from sklearn.grid_search import GridSearchCV
@@ -23,6 +19,18 @@ import argparse
 import numpy as np
 import sys
 import traceback
+
+def create_input_table(referrers_fpath, tseries_fpath = None, num_pts = 3):
+    
+    referrers = np.genfromtxt(referrers_fpath)[:,1:]
+    X = referrers
+    
+    if tseries_fpath:
+        time_series = np.genfromtxt(tseries_fpath)[:,1:]
+        time_series = time_series[:,range(num_pts)]
+        X = np.hstack((X, time_series))
+    
+    return X
 
 def get_classifier_and_params(name, sparse = False):
     
@@ -61,10 +69,10 @@ def get_classifier_and_params(name, sparse = False):
     
     return clf, param_grid
 
-def create_grid_search_cv(name, sparse):
+def create_grid_search_cv(name, sparse, n_jobs):
     clf, params = get_classifier_and_params(name, sparse)
     grid_search = GridSearchCV(clf, params, score_func=f1_score, 
-                               cv=3, refit=True)
+                               cv=3, refit=True, n_jobs=n_jobs)
     return grid_search
 
 def run_classifier(clf, X, y):
@@ -105,32 +113,11 @@ def get_mean_std_and_ci(matrices):
 
     return means, stds, cis
 
-def main(features_fpath, tags_fpath, classes_fpath, clf_name):
-    if features_fpath is None and tags_fpath is None:
-        raise Exception('Both the features_fpath and tags_fpath cannot be None')
-
-    X = None
-    sparse = False
-    if features_fpath is not None:
-        print('Using referrers')
-        X_features = scale(np.genfromtxt(features_fpath)[:,1:].copy())
-        X = X_features
-        
-    if tags_fpath is not None:
-        print('Using tags')
-        X_tags = vectorize_videos(tags_fpath)[0]
-        X = X_tags
-        sparse = True
-        
-    if features_fpath is not None and tags_fpath is not None:
-        print('Combining both')
-        X = hstack([X_features, X_tags], format='csr')
-        sparse = True
-    
-    print('Input shape', X.shape)
+def main(features_fpath, tseries_fpath, classes_fpath, clf_name):
+    X = scale(create_input_table(features_fpath, tseries_fpath))
     y = np.loadtxt(classes_fpath)
     
-    clf = create_grid_search_cv(clf_name, sparse)
+    clf = create_grid_search_cv(clf_name, False)
     class_matrices, conf_matrices = run_classifier(clf, X, y)
     
     metric_means, metrics_std, metrics_ci = get_mean_std_and_ci(class_matrices)
@@ -165,8 +152,8 @@ def create_parser(prog_name):
     
     parser.add_argument('--features_fpath', type=str,
                         help='Input file with video features')
-    parser.add_argument('--tags_fpath', type=str,
-                        help='Input file with video tags')
+    parser.add_argument('--tseries_fpath', type=str,
+                        help='Input file with video time series')
     parser.add_argument('classes_fpath', type=str,
                         help='Classes to predict')
     parser.add_argument('clf_name', type=str, choices=['rbf_svm', 
@@ -186,7 +173,7 @@ def entry_point(args=None):
     values = parser.parse_args(args[1:])
     
     try:
-        return main(values.features_fpath, values.tags_fpath, 
+        return main(values.features_fpath, values.tseries_fpath, 
                     values.classes_fpath, values.clf_name)
     except:
         traceback.print_exc()

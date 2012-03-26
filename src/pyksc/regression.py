@@ -151,7 +151,7 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
         
         return self
 
-    def predict(self, X):
+    def predict(self, X, return_class_prediction=False):
         """
         Predict using the muticlass regression model
 
@@ -177,11 +177,14 @@ class MultiClassRegression(BaseEstimator, RegressorMixin):
         out = Parallel(self.n_jobs, self.verbose, self.pre_dispatch)(\
                 delayed(_predict_helper)(*params) for params in _generator())
         
-        y_predicted = None
+        y_regr_predicted = None
         for examples, predicted in out:
-            if y_predicted is None:
-                y_predicted = np.zeros(X.shape[0], predicted.dtype)
-            y_predicted[examples] = predicted
+            if y_regr_predicted is None:
+                y_regr_predicted = np.zeros(X.shape[0], predicted.dtype)
+            y_regr_predicted[examples] = predicted
             
 
-        return y_predicted
+        if return_class_prediction:
+            return y_clf_predicted, y_regr_predicted
+        else:
+            return y_regr_predicted
