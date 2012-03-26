@@ -7,8 +7,9 @@ from pyksc import regression
 from scripts.class_predict import create_input_table
 from scripts.class_predict import create_grid_search_cv
 
-from sklearn.cross_validation import ShuffleSplit
-from sklearn.metrics import classification_report
+from sklearn import ensemble
+from sklearn.cross_validation import StratifiedShuffleSplit
+from sklearn.metrics import f1_score
 from sklearn.metrics import r2_score
 
 import plac
@@ -20,41 +21,39 @@ import sys
                   assign_fpath=plac.Annotation('Series assignment file', 
                                                type=str))
 def main(features_fpath, tseries_fpath, assign_fpath):
-    X = create_input_table(features_fpath, tseries_fpath).copy()
+    X = create_input_table(features_fpath, tseries_fpath)
     
     y_regr = np.genfromtxt(tseries_fpath)[:,1:].sum(axis=1)
     y_clf = np.genfromtxt(assign_fpath)
 
-    clf = create_grid_search_cv('rbf_svm', sparse = False, n_jobs=-1)
-    regr = regression.RSELinearRegression()
+    clf = create_grid_search_cv('extra_trees', sparse = False, n_jobs=-1)
+    
+    regr = ensemble.ExtraTreesRegressor()
     mclass_rse_lstsq = regression.MultiClassRegression(clf, 
                                                        regr, n_jobs=-1)
     
     mrse = regression.mean_relative_square_error
-    for fract in [0.5, 0.75, 0.9]:
-        cv = ShuffleSplit(n=X.shape[0], train_fraction=fract)
-        iter = 0
+    
+    for test_size in [0.05, 0.25, 0.5]:
+        cv = StratifiedShuffleSplit(y_clf, test_size=test_size, indices=False)
+        
+        f1_scores = []
+        all_mrse = []
+        all_r2 = []
         for train, test in cv:
-            X_train = X[train]
+            model = mclass_rse_lstsq.fit(X[train], y_clf[train], y_regr[train])
             X_test = X[test]
             
-            y_clf_train = y_clf[train]
-            y_clf_test = y_clf[test]
+            y_clf_true = y_clf[test]
+            y_rgr_true = y_regr[test]
+            y_clf_pred, y_rgr_pred = model.predict(X_test, True)
+            
+            f1_scores.append(f1_score(y_clf_true, y_clf_pred))
+            all_mrse.append(mrse(y_rgr_true, y_rgr_pred))
+            all_r2.append(r2_score(y_rgr_true, y_rgr_pred))
 
-            y_regr_train = y_regr[train]
-            y_regr_test = y_regr[test]
-            
-            model = mclass_rse_lstsq.fit(X_train, y_clf_train, y_regr_train)
-            y_clf_pred, y_regr_pred = model.predict(X_test, True)
-            
-            print('Classification Report: Train = %.2f; iteration %d ' \
-                  %(fract, iter))
-            print(classification_report(y_clf_test, y_clf_pred))
-            print('-- Regression Analysis:')
-            print('---- mRSE = %f' % mrse(y_regr_test, y_regr_pred))
-            print('---- R2 = %f' % r2_score(y_regr_test, y_regr_pred))
-            
-            iter += 1
-            
+        print('F1 - mean: ', np.mean(f1_scores))
+        print('R2 - mean: ', np.mean(all_r2))
+        
 if __name__ == '__main__':
     sys.exit(plac.call(main))

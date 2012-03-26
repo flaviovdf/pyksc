@@ -38,9 +38,9 @@ def main(tseries_fpath, assign_fpath, centroids_fpath, plot_foldpath):
     y = np.genfromtxt(assign_fpath)
     centroids = np.genfromtxt(centroids_fpath)
 
-    num_series = len(set(y))
+    num_classes = len(set(y))
     
-    for k in xrange(num_series):
+    for k in xrange(num_classes):
         centroid_plot_foldpath = os.path.join(plot_foldpath, str(k))
         os.mkdir(centroid_plot_foldpath)
 

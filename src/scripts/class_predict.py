@@ -24,13 +24,12 @@ def create_input_table(referrers_fpath, tseries_fpath = None, num_pts = 3):
     
     referrers = np.genfromtxt(referrers_fpath)[:,1:]
     X = referrers
-    
     if tseries_fpath:
         time_series = np.genfromtxt(tseries_fpath)[:,1:]
         time_series = time_series[:,range(num_pts)]
         X = np.hstack((X, time_series))
-    
-    return X
+        
+    return X.copy()
 
 def get_classifier_and_params(name, sparse = False):
     
@@ -39,19 +38,17 @@ def get_classifier_and_params(name, sparse = False):
     
     if name == 'rbf_svm':
         param_grid = {
-                      'C':[0.1, 0.5, 1, 5, 10, 50, 100], 
-                      'gamma':[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1],
-                      'scale_C':[False]
+                      'C':[1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4], 
+                      'gamma':[1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
                       }
         
         if sparse:
-            clf = svm.sparse.SVC(kernel='rbf', cache_size=2048)
+            clf = svm.sparse.SVC(kernel='rbf', cache_size=4096)
         else:
-            clf = svm.SVC(kernel='rbf', cache_size=2048)
+            clf = svm.SVC(kernel='rbf', cache_size=4096)
     elif name == 'linear_svm':
         param_grid = {
-                      'C':[0.1, 0.5, 1, 5, 10, 50, 100],
-                      'scale_C':[False]
+                      'C':[1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4] 
                       }
         
         if sparse:
@@ -60,8 +57,8 @@ def get_classifier_and_params(name, sparse = False):
             clf = svm.LinearSVC()
     elif name == 'extra_trees':
         param_grid = {
-                      'n_estimators':[1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
-                      'min_split':[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+                      'min_samples_split':[2, 4, 8, 16],
+                      'criterion':['entropy']
                       }
         clf = ensemble.ExtraTreesClassifier()
     else:
@@ -69,7 +66,7 @@ def get_classifier_and_params(name, sparse = False):
     
     return clf, param_grid
 
-def create_grid_search_cv(name, sparse, n_jobs):
+def create_grid_search_cv(name, sparse, n_jobs=1):
     clf, params = get_classifier_and_params(name, sparse)
     grid_search = GridSearchCV(clf, params, score_func=f1_score, 
                                cv=3, refit=True, n_jobs=n_jobs)
