@@ -115,13 +115,20 @@ def _base_ksc(tseries, initial_centroids, n_iters=-1):
     best_shift: an array of num. series size
         The amount shift amount performed for each time series
     cent_dists: a matrix of shape (num. centroids, num. series)
-        The distance of each centroid to each time serie
+        The distance of each centroid to each time series
 
     References
+    ----------    References
     ----------
-    .. [1] Wikipedia, 
-    "K-means clustering"  
-    http://en.wikipedia.org/wiki/K-means_clustering
+    .. [1] J. Yang and J. Leskovec, 
+       "Patterns of Temporal Variation in Online Media" - WSDM'11  
+       http://dl.acm.org/citation.cfm?id=1935863
+    .. [1] J. Yang and J. Leskovec, 
+       "Patterns of Temporal Variation in Online Media" - WSDM'11  
+       http://dl.acm.org/citation.cfm?id=1935863
+    .. [2] Wikipedia, 
+        "K-means clustering"  
+        http://en.wikipedia.org/wiki/K-means_clustering
     '''
     
     num_clusters = initial_centroids.shape[0]
@@ -139,7 +146,7 @@ def _base_ksc(tseries, initial_centroids, n_iters=-1):
     converged = False
 
     while iters != 0 and not converged:
-        #assign elements to new clusters
+        #assign elements to new clusters    References
         cent_dists, shifts = dist_all(centroids, tseries, rolling=True)
         
         assign = cent_dists.argmin(axis=0)
@@ -159,8 +166,45 @@ def _base_ksc(tseries, initial_centroids, n_iters=-1):
     
     return centroids, assign, best_shift, cent_dists
 
-def _bestcost_ksc(tseries, num_clusters, n_iters=-1, n_runs=10):
-    
+def ksc(tseries, num_clusters, n_iters=-1, n_runs=10):
+    '''
+    This method will make `n_runs` call to `_base_ksc` returning the results
+    from the run with the lowest over-all clustering cost. In each run,
+    a random initialization of centroids is performed. This is done by assigning
+    time series to clusters in a uniform random manner and then computing the
+    centroid of each cluster.
+
+    Please refer to the documentation of `_base_ksc` for a detailed summary
+    of the KSC algorithm.
+
+    Arguments
+    ---------
+    tseries: a matrix of shape (number of time series, size of each series)
+        The time series to cluster
+    initial_centroids: a matrix of shape (num. of clusters, size of time series)
+        The initial centroid estimates
+    n_iters: int
+        The number of iterations which the algorithm will run
+    n_runs: int
+        The number of times to run the KSC algorithm
+        
+    Returns
+    -------
+    centroids: a matrix of shape (num. of clusters, size of time series)
+        The final centroids found by the algorithm
+    assign: an array of num. series size
+        The cluster id which each time series belongs to
+    best_shift: an array of num. series size
+        The amount shift amount performed for each time series
+    cent_dists: a matrix of shape (num. centroids, num. series)
+        The distance of each centroid to each time series
+        
+    References
+    ----------
+    .. [1] J. Yang and J. Leskovec, 
+       "Patterns of Temporal Variation in Online Media" - WSDM'11  
+       http://dl.acm.org/citation.cfm?id=1935863
+    '''
     
     min_cost = float('+inf')
     
@@ -169,7 +213,7 @@ def _bestcost_ksc(tseries, num_clusters, n_iters=-1, n_runs=10):
     best_shift = None
     best_dist = None
 
-    for i in xrange(n_runs):
+    for _ in xrange(n_runs):
         assign = np.random.randint(0, num_clusters, tseries.shape[0])
         cents = _compute_centroids(tseries, assign, num_clusters)
 
@@ -185,15 +229,57 @@ def _bestcost_ksc(tseries, num_clusters, n_iters=-1, n_runs=10):
 
     return best_cents, best_assign, best_shift, best_dist
 
-def ksc(tseries, num_clusters, n_iters=-1, n_runs=10):
-    return _bestcost_ksc(tseries, num_clusters, n_iters, n_runs)
-
 def inc_ksc(tseries, num_clusters, n_iters=-1, num_wavelets=2):
+    '''
+    Given the number `num_wavelets`, this method will compute subsequent 
+    Discrete Harr Wavelet Transforms of the time series to be clustered. At
+    each transform the number of points of the time series is decreased, thus
+    we say that we are viewing the time series at a higher resolution. 
+    
+    Clustering will begin at the highest resolution (last transform), and the
+    results from the previous resolution is used to initialized the current one.
+    Only the highest resolution is initialized randomly. This technique can 
+    improve the run-time of the KSC algorithm, since it is faster to cluster 
+    at higher resolutions (less data points), being for subsequent resolutions
+    the centroids from the previous resolution already a close approximation of
+    the actual centroid. See [1] for details. 
+    
+    Please refer to the documentation of `_base_ksc` for a detailed summary
+    of the KSC algorithm.
+
+    Arguments
+    ---------
+    tseries: a matrix of shape (number of time series, size of each series)
+        The time series to cluster
+    initial_centroids: a matrix of shape (num. of clusters, size of time series)
+        The initial centroid estimates
+    n_iters: int
+        The number of iterations which the algorithm will run
+    num_wavelets: int
+        The number of wavelets to use
+        
+    Returns
+    -------
+    centroids: a matrix of shape (num. of clusters, size of time series)
+        The final centroids found by the algorithm
+    assign: an array of num. series size
+        The cluster id which each time series belongs to
+    best_shift: an array of num. series size
+        The amount shift amount performed for each time series
+    cent_dists: a matrix of shape (num. centroids, num. series)
+        The distance of each centroid to each time series
+        
+    References
+    ----------
+    .. [1] J. Yang and J. Leskovec, 
+       "Patterns of Temporal Variation in Online Media" - WSDM'11  
+       http://dl.acm.org/citation.cfm?id=1935863
+    '''
     
     dhw_series = []
     dhw_series.append(tseries)
     previous = tseries
-    for i in xrange(num_wavelets):
+    for _ in xrange(num_wavelets):
         new_series = []
         for j in xrange(tseries.shape[0]):
             wave = transform(previous[j])[0]

@@ -9,11 +9,11 @@ from __future__ import division, print_function
 from sklearn.base import clone
 from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin 
+from sklearn.externals.joblib.parallel import Parallel, delayed
 from sklearn.linear_model.base import LinearRegression
 from sklearn.utils.validation import safe_asarray
 
 import numpy as np
-from sklearn.externals.joblib.parallel import Parallel, delayed
 
 def mean_relative_square_error(y_true, y_pred):
     """
@@ -33,7 +33,7 @@ def mean_relative_square_error(y_true, y_pred):
     """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
-    return np.mean((y_pred / y_true - 1) ** 2)
+    return np.mean(((y_pred / y_true) - 1) ** 2)
     
 class RSELinearRegression(LinearRegression):
     '''
@@ -69,9 +69,6 @@ class RSELinearRegression(LinearRegression):
         
         X = (X.T / y).T
         return super(RSELinearRegression, self).fit(X, y / y)
-
-    def score(self, X, y):
-        return mean_relative_square_error(y, self.predict(X))
 
 def _fit_helper(class_, X, y, learner):
     return class_, clone(learner).fit(X, y)
