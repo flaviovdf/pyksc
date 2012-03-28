@@ -2,75 +2,22 @@
 
 from __future__ import division, print_function
 
+from scripts.learn_base import create_input_table
+from scripts.learn_base import create_grid_search
+from scripts.learn_base import clf_summary
+
 from sklearn.cross_validation import cross_val_score
 from sklearn.cross_validation import StratifiedKFold
-from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import f1_score
 from sklearn.preprocessing import scale
 
-from sklearn import ensemble
-from sklearn import svm
-
-from vod.stats.ci import t_table
+from vod.stats.ci import half_confidence_interval_size as hci
 
 import argparse
 import numpy as np
 import sys
 import traceback
-
-def create_input_table(referrers_fpath, tseries_fpath = None, num_pts = 3):
-    
-    referrers = np.genfromtxt(referrers_fpath)[:,1:]
-    X = referrers
-    if tseries_fpath:
-        time_series = np.genfromtxt(tseries_fpath)[:,1:]
-        time_series = time_series[:,range(num_pts)]
-        X = np.hstack((X, time_series))
-        
-    return X.copy()
-
-def get_classifier_and_params(name, sparse = False):
-    
-    clf = None
-    param_grid = None
-    
-    if name == 'rbf_svm':
-        param_grid = {
-                      'C':[1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4], 
-                      'gamma':[1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
-                      }
-        
-        if sparse:
-            clf = svm.sparse.SVC(kernel='rbf', cache_size=4096)
-        else:
-            clf = svm.SVC(kernel='rbf', cache_size=4096)
-    elif name == 'linear_svm':
-        param_grid = {
-                      'C':[1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4] 
-                      }
-        
-        if sparse:
-            clf = svm.sparse.LinearSVC()
-        else:
-            clf = svm.LinearSVC()
-    elif name == 'extra_trees':
-        param_grid = {
-                      'min_samples_split':[2, 4, 8, 16],
-                      'criterion':['entropy']
-                      }
-        clf = ensemble.ExtraTreesClassifier()
-    else:
-        raise Exception('Unknown Classifier')
-    
-    return clf, param_grid
-
-def create_grid_search_cv(name, sparse, n_jobs=1):
-    clf, params = get_classifier_and_params(name, sparse)
-    grid_search = GridSearchCV(clf, params, score_func=f1_score, 
-                               cv=3, refit=True, n_jobs=n_jobs)
-    return grid_search
 
 def run_classifier(clf, X, y):
     n_folds = 10
@@ -95,42 +42,20 @@ def run_classifier(clf, X, y):
 
     return class_matrices, conf_matrices
     
-def get_mean_std_and_ci(matrices):
-    
-    n_matrices = len(matrices)
-    
-    means = sum(matrices) / n_matrices
-    
-    stds = np.zeros(means.shape)
-    for i in xrange(n_matrices):
-        stds += (matrices[i] - means) ** 2
-    stds /= n_matrices - 1
-    
-    cis = t_table(n_matrices - 1, 0.95) * stds / np.sqrt(n_matrices)
-
-    return means, stds, cis
-
 def main(features_fpath, tseries_fpath, classes_fpath, clf_name):
     X = scale(create_input_table(features_fpath, tseries_fpath))
     y = np.loadtxt(classes_fpath)
     
-    clf = create_grid_search_cv(clf_name, False)
+    clf = create_grid_search(clf_name)
     class_matrices, conf_matrices = run_classifier(clf, X, y)
     
-    metric_means, metrics_std, metrics_ci = get_mean_std_and_ci(class_matrices)
-    conf_means, conf_std, conf_ci = get_mean_std_and_ci(conf_matrices)
-    
-    print("Average metrics per class with .95 confidence intervals")
-    print("class \tprecision \trecall \tf1 score \tsupport")
-    for j in xrange(metric_means.shape[1]):
-        print(j, end="\t")
-        for i in xrange(metric_means.shape[0]):
-            print('%.3f +- %.3f' % (metric_means[i, j], metrics_ci[i, j]), 
-                  end="\t")
-        print()
-    print("--")
+    metric_means = np.mean(class_matrices, axis=0)
+    metric_ci = hci(class_matrices, .95, axis=0)
+    print(clf_summary(metric_means, metric_ci))
     print()
     
+    conf_means = np.mean(conf_matrices, axis=0)
+    conf_ci = hci(conf_matrices, .95, axis=0)
     print("Average confusion matrix with .95 confidence interval")
     print(" \ttrue ")
     print("predic")
