@@ -13,9 +13,11 @@ import cStringIO
 import numpy as np
 
 #Params
-SVM_C_RANGE = [1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
-SVM_GAMMA_RANGE = [1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
+SVM_C_RANGE = [1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3]
+SVM_GAMMA_RANGE = [1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3]
+
 TREE_SPLIT_RANGE = [1, 2, 4, 8, 16]
+
 PARAMS = {'rbf_svm':{'C':SVM_C_RANGE, 'gamma':SVM_GAMMA_RANGE},
           'linear_svm':{'C':SVM_C_RANGE},
           'extra_trees':{'min_samples_split':TREE_SPLIT_RANGE}}
@@ -91,12 +93,14 @@ def create_input_table(referrers_fpath = None, tseries_fpath = None,
         time_series = np.genfromtxt(tseries_fpath)[:,1:]
         X_series = time_series[:,range(num_pts)]
         X = X_series
-        col_names.update((day, 'TDAY_%d' % day) for day in range(num_pts))
+        base = len(col_names)
+        col_names.update((pnt + base, 'POINT_%d'%pnt) for pnt in range(num_pts))
         
     if referrers_fpath and tseries_fpath:
         X = np.hstack((X_ref, X_series))
-        
-    return X, col_names
+    
+    inverse_names = dict((v, k) for k, v in col_names.items())
+    return X, col_names, inverse_names
 
 def clf_summary(mean_scores, ci_scores):
     
