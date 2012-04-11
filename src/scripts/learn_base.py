@@ -5,6 +5,10 @@ tasks
 '''
 from __future__ import division, print_function
 
+from scripts.col_to_cluster import CATEG_ABBRV
+
+from scipy import sparse
+
 from sklearn import ensemble
 from sklearn import grid_search
 from sklearn import svm
@@ -28,7 +32,7 @@ CLFS = {'rbf_svm':svm.SVC(kernel='rbf', cache_size=CACHE_SIZE),
         'linear_svm':svm.LinearSVC(),
         'extra_trees':ensemble.ExtraTreesClassifier(n_estimators=20, 
                                                     compute_importances=True,
-                                                    criterion='entropy')}
+                                                    criterion='gini')}
 
 CLFS_SPARSE = {'rbf_svm':svm.sparse.SVC(kernel='rbf', cache_size=CACHE_SIZE),
                'linear_svm':svm.sparse.LinearSVC(),
@@ -43,6 +47,11 @@ RGRS = {'rbf_svm':svm.SVR(kernel='rbf', cache_size=CACHE_SIZE),
 RGRS_SPARSE = {'rbf_svm':svm.sparse.SVR(kernel='rbf', cache_size=CACHE_SIZE),
                'linear_svm':svm.sparse.SVR(kernel='linear'),
                'extra_trees':CLFS['extra_trees']}
+
+#Category Parsing Utilities
+CAT_COL = 2
+CAT_IDS = dict((abbrv, i) \
+               for i, abbrv in enumerate(sorted(set(CATEG_ABBRV.values()))))
 
 def _get_classifier_and_params(name, sparse = False):
     if sparse:
@@ -69,38 +78,85 @@ def create_grid_search(name, sparse=False, regressor=False, n_jobs=1):
     return grid_search.GridSearchCV(learner, params, cv=3, refit=True, 
                                     n_jobs=n_jobs)
 
-def load_referrers(referrers_fpath):
-    X = np.genfromtxt(referrers_fpath)[:,1:]
+def hstack_if_possible(X, Y):
+    if X is not None:
+        return np.hstack((X, Y))
+    else:
+        return Y
+    
+def update_col_ids(ids_to_insert, column_ids=None):
+    if not column_ids: 
+        column_ids = {}
+        
+    base = len(column_ids)
+    column_ids.update((pnt + base, name) for pnt, name in ids_to_insert.items())
 
-    col_names = {}
+    return column_ids
+
+def load_referrers(referrers_fpath, X = None, column_ids=None):
+    X_ref = np.genfromtxt(referrers_fpath)[:,1:]
+
+    new_col_ids = {}
     with open(referrers_fpath) as referrers_file:
         for line in referrers_file:
             if '#' in line:
                 spl = line.split()[1:]
-                col_names = dict((k, v) for k, v in enumerate(spl))
+                new_col_ids = dict((k, v) for k, v in enumerate(spl))
 
-                return X, col_names
+                return hstack_if_possible(X, X_ref), \
+                    update_col_ids(new_col_ids, column_ids)
 
+def load_time_series(tseries_fpath, num_pts = 3, X = None, column_ids=None):
+    X_series = np.genfromtxt(tseries_fpath)[:,1:][:,range(num_pts)]
+    
+    new_col_ids = dict((i, 'POINT_%d'%pnt) \
+                       for i, pnt in enumerate(range(num_pts)))
+
+    return hstack_if_possible(X, X_series), \
+        update_col_ids(new_col_ids, column_ids)
+                      
+def load_categories(tags_cat_fpath, X = None, column_ids=None):
+    with open(tags_cat_fpath) as tags_cat_file:
+        data = []
+        row = []
+        col = []
+        new_col_ids = {}
+        for i, line in enumerate(tags_cat_file):
+            spl = line.split()
+            category = 'NULL'
+            if len(spl) > CAT_COL:
+                category = line.split()[CAT_COL]
+                
+            abbrv = CATEG_ABBRV[category]
+            categ_id = CAT_IDS[abbrv]
+            
+            data.append(1)
+            row.append(i)
+            col.append(categ_id)
+            
+            new_col_ids[categ_id] = 'CAT_%s' % abbrv
+        
+        X_categ = sparse.coo_matrix((data, (row, col))).todense()
+        return hstack_if_possible(X, X_categ), \
+            update_col_ids(new_col_ids, column_ids)
+            
 def create_input_table(referrers_fpath = None, tseries_fpath = None, 
-                       num_pts = 3):
-
-    col_names = {}
+                       tags_cat_fpath = None, num_pts = 3):
+    
+    X = None
+    column_ids = None
+    
     if referrers_fpath:
-        X_ref, col_names = load_referrers(referrers_fpath)
-        X = X_ref
+        X, column_ids = load_referrers(referrers_fpath)
         
     if tseries_fpath and num_pts > 0:
-        time_series = np.genfromtxt(tseries_fpath)[:,1:]
-        X_series = time_series[:,range(num_pts)]
-        X = X_series
-        base = len(col_names)
-        col_names.update((pnt + base, 'POINT_%d'%pnt) for pnt in range(num_pts))
-        
-    if referrers_fpath and tseries_fpath:
-        X = np.hstack((X_ref, X_series))
+        X, column_ids = load_time_series(tseries_fpath, num_pts, X, column_ids)
     
-    inverse_names = dict((v, k) for k, v in col_names.items())
-    return X, col_names, inverse_names
+    if tags_cat_fpath:
+        X, column_ids = load_categories(tags_cat_fpath, X, column_ids)
+    
+    inverse_names = dict((v, k) for k, v in column_ids.items())
+    return X, column_ids, inverse_names
 
 def clf_summary(mean_scores, ci_scores):
     

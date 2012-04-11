@@ -62,7 +62,6 @@ def replace_missing_features(L, X, y, feature_ids, feature_names):
     ref_date_feats = []
     ref_view_feats = []
     point_feats = []
-    up_date_feat = None
     for name, feat_id in feature_names.iteritems():
         if 'X_' in name:
             ref_date_feats.append(feat_id)
@@ -73,26 +72,22 @@ def replace_missing_features(L, X, y, feature_ids, feature_names):
         if 'POINT' in name:
             point_feats.append(feat_id)
 
-        if 'UPLOAD_DATE' == name:
-            up_date_feat = feat_id
+    ref_date_feats.sort()
+    ref_view_feats.sort()
+    point_feats.sort()
 
     #Referrer View Features
     mean_feat_views = (L.T / y).T[:,ref_view_feats].mean(axis=0)
     views_so_far = X[:,point_feats].sum(axis=1)
-    V = np.matrix(views_so_far).T * np.matrix(mean_feat_views)
-    X[:,ref_view_feats] = V
     
-    #Referrer Date Features
-    u = L[:,up_date_feat]
-    aux = (L.T - u).T
-    aux = ma.masked_array(aux, aux < 0)
-    mean_deviation = aux[:,ref_date_feats].mean(axis=0)
-    
-    #TODO: try to vectorize this loop
     for row in xrange(X.shape[0]):
-        for i, col in enumerate(ref_date_feats):
-            if X[row, col] == 0:
-                X[row, col] = X[row, up_date_feat] + mean_deviation[i]
+        for i, date_col in enumerate(ref_date_feats):
+            view_col = ref_view_feats[i]
+            assert feature_ids[view_col].split('_')[1] == \
+                     feature_ids[date_col].split('_')[1]
+                     
+            if X[row, date_col] != 0:
+                X[row, view_col] = views_so_far[row] * mean_feat_views[i]
 
     return X
 
@@ -117,7 +112,7 @@ def print_results(clf_scores, micro, macro, r2_class, r2_all):
     print()
     print('Micro F1 - mean: %f +- %f' % (np.mean(micro), hci(micro, .95)))
     print('Macro F1 - mean: %f +- %f' % (np.mean(macro), hci(macro, .95)))
-    print('R2 class - mean: %f +- %f' % (np.mean(r2_class),hci(r2_class, .95)))
+    print('R2 class - mean: %f +- %f' % (np.mean(r2_class), hci(r2_class, .95)))
     print('R2 all   - mean: %f +- %f' % (np.mean(r2_all), hci(r2_all, .95)))
 
 def run_experiment(X, y_clf, y_regr, test_size, feature_ids):
@@ -159,17 +154,22 @@ def run_experiment(X, y_clf, y_regr, test_size, feature_ids):
                                                      type=str),
                   partial_features_fpath=plac.Annotation('Partial Features', 
                                                          type=str),
+                  tag_categ_fpath=plac.Annotation('Tags file', type=str),
                   tseries_fpath=plac.Annotation('Time series file', type=str),
                   num_days_to_use=plac.Annotation('Num Days Series', type=int),
                   assign_fpath=plac.Annotation('Series assignment file', 
                                                type=str))
-def main(all_features_fpath ,partial_features_fpath, tseries_fpath, 
-         num_days_to_use, assign_fpath):
+def main(all_features_fpath, partial_features_fpath, tag_categ_fpath, 
+         tseries_fpath, num_days_to_use, assign_fpath):
     
     A, _, all_feat_names = create_input_table(all_features_fpath)
     X, partial_feat_ids, partial_feat_names = \
             create_input_table(partial_features_fpath, tseries_fpath, 
-                               num_days_to_use)
+                               tag_categ_fpath, num_pts = num_days_to_use)
+    
+    print(X.shape)
+    print(partial_feat_ids)
+    
     #Sanity check
     for col_name in partial_feat_names:
         if col_name in all_feat_names:

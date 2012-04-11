@@ -12,16 +12,16 @@ import numpy as np
 import plac
 import sys
 
-referrer_trans = {
-                'EXTERNAL':'EXT.',
-                'FEATURED':'FEAT.',
-                'INTERNAL':'INT.',
-                'MOBILE':'MOBI.',
-                'SEARCH':'SEAR.',
-                'SOCIAL':'SOC.',
-                'VIRAL':'VIR.'}
+REFERRER_ABBRV = {
+    'EXTERNAL':'EXT.',
+    'FEATURED':'FEAT.',
+    'INTERNAL':'INT.',
+    'MOBILE':'MOBI.',
+    'SEARCH':'SEAR.',
+    'SOCIAL':'SOC.',
+    'VIRAL':'VIR.'}
 
-category_trans = {
+CATEG_ABBRV = {
     'Autos&amp;Vehicles':'Vehi.',
     'Autos':'Vehi.',
     'Comedy':'Com.',
@@ -63,7 +63,7 @@ def load_text_file(features_fpath, col_to_use, classes):
             if col_to_use >= len(spl):
                 continue
             
-            data = category_trans[line.split()[col_to_use].strip()]
+            data = CATEG_ABBRV[line.split()[col_to_use].strip()]
             class_num = classes[curr_line]
             
             labels.add(data)
@@ -95,7 +95,7 @@ def load_svm_file(features_fpath, classes):
                 continue
             
             for ref_name, col_id in col_dict.items():
-                ref_abbrv = referrer_trans[ref_name]
+                ref_abbrv = REFERRER_ABBRV[ref_name]
                 class_num = classes[curr_line]
                 
                 present = float(line.split()[col_id]) > 0
