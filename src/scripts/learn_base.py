@@ -80,6 +80,8 @@ def create_grid_search(name, sparse=False, regressor=False, n_jobs=1):
 
 def hstack_if_possible(X, Y):
     if X is not None:
+        print(type(X), type(Y))
+        print(type(np.hstack((X, Y))))
         return np.hstack((X, Y))
     else:
         return Y
@@ -94,7 +96,7 @@ def update_col_ids(ids_to_insert, column_ids=None):
     return column_ids
 
 def load_referrers(referrers_fpath, X = None, column_ids=None):
-    X_ref = np.genfromtxt(referrers_fpath)[:,1:]
+    X_ref = np.genfromtxt(referrers_fpath)[:,1:].copy()
 
     new_col_ids = {}
     with open(referrers_fpath) as referrers_file:
@@ -136,7 +138,7 @@ def load_categories(tags_cat_fpath, X = None, column_ids=None):
             
             new_col_ids[categ_id] = 'CAT_%s' % abbrv
         
-        X_categ = sparse.coo_matrix((data, (row, col))).todense()
+        X_categ = np.asarray(sparse.coo_matrix((data, (row, col))).todense())
         return hstack_if_possible(X, X_categ), \
             update_col_ids(new_col_ids, column_ids)
             
