@@ -181,7 +181,7 @@ def main(all_features_fpath, partial_features_fpath, tag_categ_fpath,
     y_regr = np.genfromtxt(tseries_fpath)[:,1:].sum(axis=1)
     
     if num_days_to_use > 0:
-        for test_size in [0.05, 0.20, 0.40, 0.60, 0.80, 0.95]:
+        for test_size in [0.01, 0.05, 0.20, 0.40, 0.60, 0.80, 0.95, 0.99]:
             print('Param Learn Size: ', test_size)
             
             idx = np.arange(X.shape[0])
