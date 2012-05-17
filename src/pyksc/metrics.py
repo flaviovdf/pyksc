@@ -33,7 +33,7 @@ def avg_intra_dist(tseries, assign, dists_all_pairs=None):
         dists_i = dists_all_pairs[i]
         dists.extend(dists_i[members])
         
-    return np.mean(dists)
+    return np.mean(dists), np.std(dists)
 
 def avg_inter_dist(tseries, assign, dists_all_pairs=None):
     
@@ -49,14 +49,14 @@ def avg_inter_dist(tseries, assign, dists_all_pairs=None):
         dists_i = dists_all_pairs[i]
         dists.extend(dists_i[non_members])
         
-    return np.mean(dists)
+    return np.mean(dists), np.std(dists)
 
 def beta_cv(tseries, assign, dists_all_pairs=None):
     
-    intra = avg_intra_dist(tseries, assign, dists_all_pairs)
-    inter = avg_inter_dist(tseries, assign, dists_all_pairs)
+    intra_mean, intra_std = avg_intra_dist(tseries, assign, dists_all_pairs)
+    inter_mean, inter_std = avg_inter_dist(tseries, assign, dists_all_pairs)
     
-    return intra / inter
+    return (inter_std / inter_mean) / (intra_std / intra_mean)
 
 def silhouette(tseries, assign, dists_all_pairs=None):
     
