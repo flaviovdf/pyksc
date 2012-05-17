@@ -22,9 +22,9 @@ def run_clustering(X, k, dists_all):
 
     cent, assign, shift, dists_cent = ksc.inc_ksc(X, k)
 
-    intra = metrics.avg_intra_dist(X, assign, dists_all)
-    inter = metrics.avg_inter_dist(X, assign, dists_all)
-    bcv = intra / inter
+    intra = metrics.avg_intra_dist(X, assign, dists_all)[0]
+    inter = metrics.avg_inter_dist(X, assign, dists_all)[0]
+    bcv = metrics.beta_cv(X, assign, dists_all)
     cost = metrics.cost(X, assign, None, dists_cent)
 
     return intra, inter, bcv, cost
@@ -94,7 +94,7 @@ def main(tseries_fpath, plot_foldpath):
     
     plt.errorbar(clust_range, np.mean(costs_array, axis=0), fmt='bo', 
                  label='Cost', yerr=costs_err)
-    plt.ylabel('Mean Cost (F)')
+    plt.ylabel('Cost (F)')
     plt.xlabel('Number of clusters')
     plt.xlim((0., 16))
     plt.ylim((0., 1.))

@@ -32,7 +32,8 @@ CLFS = {'rbf_svm':svm.SVC(kernel='rbf', cache_size=CACHE_SIZE),
         'linear_svm':svm.LinearSVC(),
         'extra_trees':ensemble.ExtraTreesClassifier(n_estimators=20, 
                                                     compute_importances=True,
-                                                    criterion='gini')}
+                                                    criterion='gini',
+                                                    n_jobs=1)}
 
 CLFS_SPARSE = {'rbf_svm':svm.sparse.SVC(kernel='rbf', cache_size=CACHE_SIZE),
                'linear_svm':svm.sparse.LinearSVC(),
@@ -42,7 +43,8 @@ CLFS_SPARSE = {'rbf_svm':svm.sparse.SVC(kernel='rbf', cache_size=CACHE_SIZE),
 RGRS = {'rbf_svm':svm.SVR(kernel='rbf', cache_size=CACHE_SIZE),
         'linear_svm':svm.SVR(kernel='linear'),
         'extra_trees':ensemble.ExtraTreesRegressor(n_estimators=20, 
-                                                   compute_importances=True)}
+                                                   compute_importances=True,
+                                                   n_jobs=1)}
 
 RGRS_SPARSE = {'rbf_svm':svm.sparse.SVR(kernel='rbf', cache_size=CACHE_SIZE),
                'linear_svm':svm.sparse.SVR(kernel='linear'),
@@ -80,8 +82,6 @@ def create_grid_search(name, sparse=False, regressor=False, n_jobs=1):
 
 def hstack_if_possible(X, Y):
     if X is not None:
-        print(type(X), type(Y))
-        print(type(np.hstack((X, Y))))
         return np.hstack((X, Y))
     else:
         return Y

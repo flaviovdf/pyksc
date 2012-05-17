@@ -8,7 +8,7 @@ def initialize_matplotlib():
     rc('axes', labelsize=20)
     rc('axes', unicode_minus=False)
     rc('axes', grid=True)
-#    rc('grid', color='lightgrey')
+    rc('grid', color='lightgrey')
     rc('grid', linestyle=':')
     rc('font', family='serif')
     rc('legend', fontsize=18)

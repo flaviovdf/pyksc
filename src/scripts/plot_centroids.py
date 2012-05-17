@@ -16,9 +16,16 @@ import sys
 import traceback
 
 def main(tseries_fpath, k, plot_foldpath):
+    import mkl
+    mkl.set_num_threads(16)
+
     initialize_matplotlib()
     
-    X = np.genfromtxt(tseries_fpath)[:,1:].copy()
+    X = np.genfromtxt(tseries_fpath)[:,1:]
+    aux = X.sum(axis=1)
+    fix = np.where(aux == 0)[0]
+    X[fix] += .001 #fixing zero only rows
+    X = X.copy()
 
     cent, assign, shift, dists_cent = ksc.inc_ksc(X, k)
     
@@ -26,8 +33,10 @@ def main(tseries_fpath, k, plot_foldpath):
         t_series = cent[i]
         
         plt.plot(t_series, '-k')
-        plt.ylabel('Views')
-        plt.xlabel('Time')
+        plt.gca().get_xaxis().set_visible(False)
+        plt.gca().get_yaxis().set_visible(False)
+        #plt.ylabel('Views')
+        #plt.xlabel('Time')
         plt.savefig(os.path.join(plot_foldpath, '%d.pdf' % i))
         plt.close()
         
@@ -35,16 +44,20 @@ def main(tseries_fpath, k, plot_foldpath):
         to_shift = half - np.argmax(t_series)
         to_plot_peak_center = dist.shift(t_series, to_shift, rolling=True)
         plt.plot(to_plot_peak_center, '-k')
-        plt.ylabel('Views')
-        plt.xlabel('Time')
+        plt.gca().get_xaxis().set_visible(False)
+        plt.gca().get_yaxis().set_visible(False)
+        #plt.ylabel('Views')
+        #plt.xlabel('Time')
         plt.savefig(os.path.join(plot_foldpath, '%d-peak-center.pdf' % i))
         plt.close()
         
         to_shift = 0 - np.argmin(t_series)
         to_plot_min_first = dist.shift(t_series, to_shift, rolling=True)
         plt.plot(to_plot_min_first, '-k')
-        plt.ylabel('Views')
-        plt.xlabel('Time')
+        plt.gca().get_xaxis().set_visible(False)
+        plt.gca().get_yaxis().set_visible(False)
+        #plt.ylabel('Views')
+        #plt.xlabel('Time')
         plt.savefig(os.path.join(plot_foldpath, '%d-min-first.pdf' % i))
         plt.close()
         

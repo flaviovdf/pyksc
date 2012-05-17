@@ -20,15 +20,15 @@ import sys
 import traceback
 
 def run_classifier(clf, X, y):
-    n_folds = 10
+    n_folds = 5
     cross_fold = StratifiedKFold(y, k=n_folds)
     
     #class_matrices has shape [n_folds, 4, n_classes] 
     #The second dimension has 4 metrics: for precision, recall, f1, support
-    R_cv = cross_val_score(clf, X, y, cv=cross_fold, n_jobs=-1, 
+    R_cv = cross_val_score(clf, X, y, cv=cross_fold, n_jobs=1, 
                            score_func=precision_recall_fscore_support)
     
-    C_cv = cross_val_score(clf, X, y, cv=cross_fold, n_jobs=-1, 
+    C_cv = cross_val_score(clf, X, y, cv=cross_fold, n_jobs=1, 
                            score_func=confusion_matrix)
 
     class_matrices = []
@@ -42,8 +42,8 @@ def run_classifier(clf, X, y):
 
     return class_matrices, conf_matrices
     
-def main(features_fpath, tseries_fpath, classes_fpath, clf_name):
-    X = scale(create_input_table(features_fpath, tseries_fpath))
+def main(features_fpath, tseries_fpath, tags_fpath, classes_fpath, clf_name):
+    X, params = create_input_table(features_fpath, tseries_fpath, tags_fpath)
     y = np.loadtxt(classes_fpath)
     
     clf = create_grid_search(clf_name)
@@ -63,7 +63,7 @@ def main(features_fpath, tseries_fpath, classes_fpath, clf_name):
         print(i, end="\t \t")
         for j in xrange(conf_means.shape[1]):
             print('%.3f +- %.3f' % (conf_means[i, j], conf_ci[i, j]), end="\t")
-        print()            
+        print()
 
 def create_parser(prog_name):
     
@@ -76,6 +76,8 @@ def create_parser(prog_name):
                         help='Input file with video features')
     parser.add_argument('--tseries_fpath', type=str,
                         help='Input file with video time series')
+    parser.add_argument('--tags_fpath', type=str,
+                        help='Input file with video tags')
     parser.add_argument('classes_fpath', type=str,
                         help='Classes to predict')
     parser.add_argument('clf_name', type=str, choices=['rbf_svm', 
@@ -96,7 +98,7 @@ def entry_point(args=None):
     
     try:
         return main(values.features_fpath, values.tseries_fpath, 
-                    values.classes_fpath, values.clf_name)
+                    values.tags_fpath, values.classes_fpath, values.clf_name)
     except:
         traceback.print_exc()
         parser.print_usage(file=sys.stderr)
