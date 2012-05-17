@@ -20,7 +20,7 @@ from pyksc.dist import shift
 from pyksc.metrics import cost
 
 import numpy as np
-import numpy.linalg as LA
+import scipy.linalg as LA
 
 def _compute_centroids(tseries, assign, num_clusters, to_shift=None):
     '''
@@ -76,8 +76,11 @@ def _compute_centroids(tseries, assign, num_clusters, to_shift=None):
             #compute eigenvalues and chose the vector for the smallest one
             #TODO: Check if using scipy's linalg is faster (has more options
             #      such as finding only the smallest eigval)
-            eig_vals, eig_vectors = LA.eigh(m_mat)
-            centroids[k] = eig_vectors[:,eig_vals.argmin()]
+            _, eig_vectors = LA.eigh(m_mat, eigvals=(0, 0))
+            centroids[k] = eig_vectors[:,0]
+            
+            if centroids[k].sum() < 0:
+                centroids[k] = -centroids[k]
         else:
             centroids[k] = np.zeros(series_size)
 
