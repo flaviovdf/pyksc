@@ -106,9 +106,7 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
     print_final_summary(feature_ids, clf_scores, micro, macro, r2_all, 
                         importance_clf, importance_rgr)
 
-@plac.annotations(all_features_fpath=plac.Annotation('All time features', 
-                                                     type=str),
-                  partial_features_fpath=plac.Annotation('Partial Features', 
+@plac.annotations(partial_features_fpath=plac.Annotation('Partial Features', 
                                                          type=str),
                   tag_categ_fpath=plac.Annotation('Tags file', type=str),
                   tseries_fpath=plac.Annotation('Time series file', type=str),
@@ -118,25 +116,12 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
 def main(all_features_fpath, partial_features_fpath, tag_categ_fpath, 
          tseries_fpath, num_days_to_use, assign_fpath):
     
-    L, _, all_feat_names = create_input_table(all_features_fpath)
-    X, feature_ids, feature_names = \
+    X, feature_ids, _ = \
             create_input_table(partial_features_fpath, tseries_fpath, 
                                tag_categ_fpath, num_pts = num_days_to_use)
     
-    #Sanity check
-    for col_name in feature_names:
-        if col_name in all_feat_names:
-            assert feature_names[col_name] == all_feat_names[col_name]
-            
-    #Sort X by upload date
-    #up_date_col = feature_names['A_UPLOAD_DATE']
-    #sort_by_date = X[:,up_date_col].argsort()
-    #X = X[sort_by_date]
-    
     y_clf = np.genfromtxt(assign_fpath)
     y_regr = np.genfromtxt(tseries_fpath)[:,1:].sum(axis=1)
-    
-    print('Using all time features')
     run_experiment(X, y_clf, y_regr, feature_ids)
 
 if __name__ == '__main__':
