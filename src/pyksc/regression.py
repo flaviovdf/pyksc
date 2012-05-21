@@ -15,6 +15,28 @@ from sklearn.utils.validation import safe_asarray
 
 import numpy as np
 
+def mean_absolute_error(y_true, y_pred):
+    """
+    Mean absolute error regression loss
+
+    Positive floating point value: the best value is 0.0.
+
+    Parameters
+    ----------
+    y_true : array-like
+
+    y_pred : array-like
+
+    Returns
+    -------
+    mrae : float
+    """
+    
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    
+    return np.mean(np.abs(y_true - y_pred))
+
 def mean_relative_square_error(y_true, y_pred):
     """
     Mean relative square error regression loss
