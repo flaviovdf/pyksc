@@ -2,13 +2,10 @@
 
 from __future__ import division, print_function
 
-from pyksc import regression
-
 from scripts.learn_base import create_input_table
 from scripts.learn_base import create_grid_search
 from scripts.learn_base import clf_summary
 
-from sklearn.base import clone
 from sklearn.cross_validation import StratifiedKFold
 from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.metrics import f1_score
