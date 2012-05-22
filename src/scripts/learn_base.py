@@ -143,7 +143,7 @@ def load_categories(tags_cat_fpath, X = None, column_ids=None):
             update_col_ids(new_col_ids, column_ids)
             
 def create_input_table(referrers_fpath = None, tseries_fpath = None, 
-                       tags_cat_fpath = None, num_pts = 3):
+                       tags_cat_fpath = None, num_pts = -1):
     
     X = None
     column_ids = None

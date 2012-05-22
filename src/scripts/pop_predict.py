@@ -24,24 +24,24 @@ def create_learners(learner_name='extra_trees'):
 
     return clf, rgr
     
-def fit_and_predict(learner, rgr_base, X, y_clf, y_regr, train, test):
-    model = learner.fit(X[train], y_clf[train])
+def fit_and_predict(clf, rgr, X, y_clf, y_rgr, train, test):
+    clf_model = clf.fit(X[train], y_clf[train])
         
     y_clf_true = y_clf[test]
-    y_rgr_true = y_regr[test]
-    y_clf_pred = model.predict(X[test])
+    y_rgr_true = y_rgr[test]
+    y_clf_pred = clf_model.predict(X[test])
     
     class_scores = np.array(precision_recall_fscore_support(y_clf_true,
                                                             y_clf_pred))
-    
     micro_f1 = f1_score(y_clf_true, y_clf_pred, average='micro')
     macro_f1 = f1_score(y_clf_true, y_clf_pred, average='macro')
     
-    y_rgr_base = rgr_base.fit(X[train], y_regr[train]).predict(X[test])
-    general_r2 = r2_score(y_rgr_true, y_rgr_base)
+    rgr_model = rgr.fit(X[train], y_rgr[train])
+    y_rgr_pred = rgr_model.predict(X[test])
+    general_r2 = r2_score(y_rgr_true, y_rgr_pred)
     
-    best_feat_clf = model.best_estimator_.feature_importances_
-    best_feat_rgr = rgr_base.best_estimator_.feature_importances_
+    best_feat_clf = clf_model.best_estimator_.feature_importances_
+    best_feat_rgr = rgr_model.best_estimator_.feature_importances_
         
     return class_scores, micro_f1, macro_f1, general_r2, best_feat_clf, \
             best_feat_rgr
@@ -50,6 +50,7 @@ def print_importance(feature_ids, importance_clf, importance_rgr):
     clf_imp = np.mean(importance_clf, axis=0)
     rgr_imp = np.mean(importance_rgr, axis=0)
     
+    print()
     print('Classification Importance')
     for key in clf_imp.argsort()[:-1]:
         print(feature_ids[key], clf_imp[key])
@@ -64,11 +65,9 @@ def print_results(clf_scores, micro, macro, r2_all):
     metric_ci = hci(clf_scores, .95, axis=0)
     
     print(clf_summary(metric_means, metric_ci))
-    print()
     print('Micro F1 - mean: %f +- %f' % (np.mean(micro), hci(micro, .95)))
     print('Macro F1 - mean: %f +- %f' % (np.mean(macro), hci(macro, .95)))
     print('R2 all   - mean: %f +- %f' % (np.mean(r2_all), hci(r2_all, .95)))
-
 
 def print_final_summary(feature_ids, clf_scores, micro, macro, 
                         r2_all, importance_clf, importance_rgr):
@@ -104,17 +103,15 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
                         importance_clf, importance_rgr)
 
 @plac.annotations(partial_features_fpath=plac.Annotation('Partial Features', 
-                                                         type=str),
                   tag_categ_fpath=plac.Annotation('Tags file', type=str),
                   tseries_fpath=plac.Annotation('Time series file', type=str),
                   num_days_to_use=plac.Annotation('Num Days Series', type=int),
                   assign_fpath=plac.Annotation('Series assignment file', 
                                                type=str))
-def main(all_features_fpath, partial_features_fpath, tag_categ_fpath, 
-         tseries_fpath, num_days_to_use, assign_fpath):
+def main(features_fpath, tag_categ_fpath, tseries_fpath, num_days_to_use, 
+         assign_fpath):
     
     X, feature_ids, _ = \
-            create_input_table(partial_features_fpath, tseries_fpath, 
                                tag_categ_fpath, num_pts = num_days_to_use)
     
     y_clf = np.genfromtxt(assign_fpath)

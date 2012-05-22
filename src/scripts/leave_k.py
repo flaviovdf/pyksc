@@ -5,7 +5,6 @@ from __future__ import division, print_function
 from scripts.learn_base import create_input_table
 from scripts.learn_base import create_grid_search
 
-from sklearn.metrics import zero_one_score
 from sklearn.metrics import f1_score
 from sklearn.metrics import mean_square_error as mse
 from sklearn.metrics import r2_score
@@ -21,17 +20,15 @@ def create_learners(learner_name='extra_trees'):
     return clf, rgr
     
 def print_importance(feature_ids, importance_clf, importance_rgr):
-    clf_imp = np.mean(importance_clf, axis=0)
-    rgr_imp = np.mean(importance_rgr, axis=0)
-    
+    print()    
     print('Classification Importance')
-    for key in clf_imp.argsort()[:-1]:
-        print(feature_ids[key], clf_imp[key])
+    for key in importance_clf.argsort()[:-1]:
+        print(feature_ids[key], importance_clf[key])
     
     print()
     print('Regression Importance')
-    for key in rgr_imp.argsort()[:-1]:
-        print(feature_ids[key], rgr_imp[key])
+    for key in importance_rgr.argsort()[:-1]:
+        print(feature_ids[key], importance_rgr[key])
 
 def mae(y_true, y_pred):
     y_true = np.asanyarray(y_true)

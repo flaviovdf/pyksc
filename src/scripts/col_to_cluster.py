@@ -33,6 +33,7 @@ CATEG_ABBRV = {
     'Gaming':'Game',
     'Howto':'Howto',
     'Howto&amp;Style':'Howto',
+    'Movies':'Film',
     'Music':'Mus.',
     'NULL':'-',
     'News':'News',
@@ -49,6 +50,7 @@ CATEG_ABBRV = {
     'Tech':'Sci.',
     'Shows':'Show',
     'Sports':'Sport',
+    'Trailers':'Film',
     'Travel&amp;Events':'Travel',
     'Travel':'Travel'}
     
