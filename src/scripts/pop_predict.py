@@ -16,6 +16,7 @@ from vod.stats.ci import half_confidence_interval_size as hci
 
 import plac
 import numpy as np
+import os
 import sys
 
 def create_learners(learner_name='extra_trees'):
@@ -24,7 +25,7 @@ def create_learners(learner_name='extra_trees'):
 
     return clf, rgr
     
-def fit_and_predict(clf, rgr, X, y_clf, y_rgr, train, test):
+def fit_and_predict(clf, rgr, X, y_clf, y_rgr, train, test, out_folder, fold):
     clf_model = clf.fit(X[train], y_clf[train])
         
     y_clf_true = y_clf[test]
@@ -42,7 +43,19 @@ def fit_and_predict(clf, rgr, X, y_clf, y_rgr, train, test):
     
     best_feat_clf = clf_model.best_estimator_.feature_importances_
     best_feat_rgr = rgr_model.best_estimator_.feature_importances_
-        
+    
+    clf_pred_fpath = os.path.join(out_folder, '%d-clf.pred' % fold)
+    clf_true_fpath = os.path.join(out_folder, '%d-clf.true' % fold)
+    
+    rgr_pred_fpath = os.path.join(out_folder, '%d-rgr.pred' % fold)
+    rgr_true_fpath = os.path.join(out_folder, '%d-rgr.true' % fold)
+    
+    np.savetxt(clf_pred_fpath, y_clf_pred, fmt="%d")
+    np.savetxt(clf_true_fpath, y_clf_true, fmt="%d")
+    
+    np.savetxt(rgr_pred_fpath, y_rgr_pred)
+    np.savetxt(rgr_true_fpath, y_rgr_true)
+    
     return class_scores, micro_f1, macro_f1, general_r2, best_feat_clf, \
             best_feat_rgr
 
@@ -75,7 +88,7 @@ def print_final_summary(feature_ids, clf_scores, micro, macro,
     print_results(clf_scores, micro, macro, r2_all)
     print_importance(feature_ids, importance_clf, importance_rgr)
 
-def run_experiment(X, y_clf, y_regr, feature_ids):
+def run_experiment(X, y_clf, y_regr, feature_ids, out_folder):
     
     clf_scores = []
     micro = []
@@ -86,11 +99,12 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
     
     learner, rgr_base = create_learners()
     cv = StratifiedKFold(y_clf, k=5)
+    fold_num = 1
     for train, test in cv:
         class_scores, micro_f1, macro_f1, general_r2, best_feat_clf, \
                 best_feat_rgr = \
                 fit_and_predict(learner, rgr_base, X, y_clf, y_regr, train, 
-                                test)
+                                test, out_folder, fold_num)
         
         clf_scores.append(class_scores)
         micro.append(micro_f1)
@@ -99,6 +113,8 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
         r2_all.append(general_r2)
         importance_clf.append(best_feat_clf)
         importance_rgr.append(best_feat_rgr)
+        
+        fold_num += 1
         
     print_final_summary(feature_ids, clf_scores, micro, macro, r2_all, 
                         importance_clf, importance_rgr)
@@ -109,9 +125,10 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
                   tseries_fpath=plac.Annotation('Time series file', type=str),
                   num_days_to_use=plac.Annotation('Num Days Series', type=int),
                   assign_fpath=plac.Annotation('Series assignment file', 
-                                               type=str))
+                                               type=str),
+                  out_foldpath=plac.Annotation('Output folder', type=str))
 def main(features_fpath, tag_categ_fpath, tseries_fpath, num_days_to_use, 
-         assign_fpath):
+         assign_fpath, out_foldpath):
     
     X, feature_ids, _ = \
             create_input_table(features_fpath, tseries_fpath, tag_categ_fpath,
@@ -119,7 +136,7 @@ def main(features_fpath, tag_categ_fpath, tseries_fpath, num_days_to_use,
     
     y_clf = np.genfromtxt(assign_fpath)
     y_regr = np.genfromtxt(tseries_fpath)[:,1:].sum(axis=1)
-    run_experiment(X, y_clf, y_regr, feature_ids)
+    run_experiment(X, y_clf, y_regr, feature_ids, out_foldpath)
 
 if __name__ == '__main__':
     sys.exit(plac.call(main))
