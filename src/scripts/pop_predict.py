@@ -89,7 +89,8 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
     for train, test in cv:
         class_scores, micro_f1, macro_f1, general_r2, best_feat_clf, \
                 best_feat_rgr = \
-                fit_and_predict(learner, rgr_base, X, y_clf, y_regr, train, test)
+                fit_and_predict(learner, rgr_base, X, y_clf, y_regr, train, 
+                                test)
         
         clf_scores.append(class_scores)
         micro.append(micro_f1)
@@ -102,7 +103,8 @@ def run_experiment(X, y_clf, y_regr, feature_ids):
     print_final_summary(feature_ids, clf_scores, micro, macro, r2_all, 
                         importance_clf, importance_rgr)
 
-@plac.annotations(partial_features_fpath=plac.Annotation('Partial Features', 
+@plac.annotations(features_fpath=plac.Annotation('Partial Features', 
+                                                         type=str),
                   tag_categ_fpath=plac.Annotation('Tags file', type=str),
                   tseries_fpath=plac.Annotation('Time series file', type=str),
                   num_days_to_use=plac.Annotation('Num Days Series', type=int),
@@ -112,6 +114,7 @@ def main(features_fpath, tag_categ_fpath, tseries_fpath, num_days_to_use,
          assign_fpath):
     
     X, feature_ids, _ = \
+            create_input_table(features_fpath, tseries_fpath, 
                                tag_categ_fpath, num_pts = num_days_to_use)
     
     y_clf = np.genfromtxt(assign_fpath)
