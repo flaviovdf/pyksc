@@ -52,12 +52,12 @@ def print_importance(feature_ids, importance_clf, importance_rgr):
     
     print()
     print('Classification Importance')
-    for key in clf_imp.argsort()[:-1]:
+    for key in clf_imp.argsort()[::-1]:
         print(feature_ids[key], clf_imp[key])
     
     print()
     print('Regression Importance')
-    for key in rgr_imp.argsort()[:-1]:
+    for key in rgr_imp.argsort()[::-1]:
         print(feature_ids[key], rgr_imp[key])
 
 def print_results(clf_scores, micro, macro, r2_all):
@@ -114,8 +114,8 @@ def main(features_fpath, tag_categ_fpath, tseries_fpath, num_days_to_use,
          assign_fpath):
     
     X, feature_ids, _ = \
-            create_input_table(features_fpath, tseries_fpath, 
-                               tag_categ_fpath, num_pts = num_days_to_use)
+            create_input_table(features_fpath, tseries_fpath, tag_categ_fpath,
+                               num_days_to_use)
     
     y_clf = np.genfromtxt(assign_fpath)
     y_regr = np.genfromtxt(tseries_fpath)[:,1:].sum(axis=1)

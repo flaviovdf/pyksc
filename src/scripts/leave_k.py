@@ -22,12 +22,12 @@ def create_learners(learner_name='extra_trees'):
 def print_importance(feature_ids, importance_clf, importance_rgr):
     print()    
     print('Classification Importance')
-    for key in importance_clf.argsort()[:-1]:
+    for key in importance_clf.argsort()[::-1]:
         print(feature_ids[key], importance_clf[key])
     
     print()
     print('Regression Importance')
-    for key in importance_rgr.argsort()[:-1]:
+    for key in importance_rgr.argsort()[::-1]:
         print(feature_ids[key], importance_rgr[key])
 
 def mae(y_true, y_pred):
