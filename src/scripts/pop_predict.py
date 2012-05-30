@@ -6,11 +6,15 @@ from scripts.learn_base import create_input_table
 from scripts.learn_base import create_grid_search
 from scripts.learn_base import clf_summary
 
+from pyksc.regression import mean_relative_square_error as mrse
+
 from sklearn.cross_validation import StratifiedKFold
 from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.metrics import f1_score
 from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import r2_score
+from sklearn.preprocessing import scale
 
 from vod.stats.ci import half_confidence_interval_size as hci
 
@@ -19,7 +23,7 @@ import numpy as np
 import os
 import sys
 
-def create_learners(learner_name='extra_trees'):
+def create_learners(learner_name='rbf_svm'):
     clf = create_grid_search(learner_name, n_jobs=-1)
     rgr = create_grid_search(learner_name, regressor=True, n_jobs=-1)
 
@@ -39,10 +43,10 @@ def fit_and_predict(clf, rgr, X, y_clf, y_rgr, train, test, out_folder, fold):
     
     rgr_model = rgr.fit(X[train], y_rgr[train])
     y_rgr_pred = rgr_model.predict(X[test])
-    general_r2 = r2_score(y_rgr_true, y_rgr_pred)
     
-    best_feat_clf = clf_model.best_estimator_.feature_importances_
-    best_feat_rgr = rgr_model.best_estimator_.feature_importances_
+    general_r2 = r2_score(y_rgr_true, y_rgr_pred)
+    mse_score  = mse(y_rgr_true, y_rgr_pred)
+    mrse_score = mrse(y_rgr_true, y_rgr_pred)
     
     clf_pred_fpath = os.path.join(out_folder, '%d-clf.pred' % fold)
     clf_true_fpath = os.path.join(out_folder, '%d-clf.true' % fold)
@@ -56,24 +60,10 @@ def fit_and_predict(clf, rgr, X, y_clf, y_rgr, train, test, out_folder, fold):
     np.savetxt(rgr_pred_fpath, y_rgr_pred)
     np.savetxt(rgr_true_fpath, y_rgr_true)
     
-    return class_scores, micro_f1, macro_f1, general_r2, best_feat_clf, \
-            best_feat_rgr
+    return class_scores, micro_f1, macro_f1, general_r2, mse_score,\
+            mrse_score
 
-def print_importance(feature_ids, importance_clf, importance_rgr):
-    clf_imp = np.mean(importance_clf, axis=0)
-    rgr_imp = np.mean(importance_rgr, axis=0)
-    
-    print()
-    print('Classification Importance')
-    for key in clf_imp.argsort()[::-1]:
-        print(feature_ids[key], clf_imp[key])
-    
-    print()
-    print('Regression Importance')
-    for key in rgr_imp.argsort()[::-1]:
-        print(feature_ids[key], rgr_imp[key])
-
-def print_results(clf_scores, micro, macro, r2_all):
+def print_results(clf_scores, micro, macro, r2_all, mse_all, mrse_all):
     metric_means = np.mean(clf_scores, axis=0)
     metric_ci = hci(clf_scores, .95, axis=0)
     
@@ -81,12 +71,9 @@ def print_results(clf_scores, micro, macro, r2_all):
     print('Micro F1 - mean: %f +- %f' % (np.mean(micro), hci(micro, .95)))
     print('Macro F1 - mean: %f +- %f' % (np.mean(macro), hci(macro, .95)))
     print('R2 all   - mean: %f +- %f' % (np.mean(r2_all), hci(r2_all, .95)))
-
-def print_final_summary(feature_ids, clf_scores, micro, macro, 
-                        r2_all, importance_clf, importance_rgr):
-    
-    print_results(clf_scores, micro, macro, r2_all)
-    print_importance(feature_ids, importance_clf, importance_rgr)
+    print('MSE all   - mean: %f +- %f' % (np.mean(mse_all), hci(mse_all, .95)))
+    print('MRSE all   - mean: %f +- %f' % (np.mean(mrse_all), 
+                                           hci(mrse_all, .95)))
 
 def run_experiment(X, y_clf, y_regr, feature_ids, out_folder):
     
@@ -94,15 +81,15 @@ def run_experiment(X, y_clf, y_regr, feature_ids, out_folder):
     micro = []
     macro = []
     r2_all = []
-    importance_clf = []
-    importance_rgr = []
+    mse_all = []
+    mrse_all = []
     
     learner, rgr_base = create_learners()
     cv = StratifiedKFold(y_clf, k=5)
     fold_num = 1
     for train, test in cv:
-        class_scores, micro_f1, macro_f1, general_r2, best_feat_clf, \
-                best_feat_rgr = \
+        class_scores, micro_f1, macro_f1, general_r2, \
+                mse_score, mrse_score = \
                 fit_and_predict(learner, rgr_base, X, y_clf, y_regr, train, 
                                 test, out_folder, fold_num)
         
@@ -111,13 +98,12 @@ def run_experiment(X, y_clf, y_regr, feature_ids, out_folder):
         macro.append(macro_f1)
         
         r2_all.append(general_r2)
-        importance_clf.append(best_feat_clf)
-        importance_rgr.append(best_feat_rgr)
-        
+        mse_all.append(mse_score)
+        mrse_all.append(mrse_score)
+
         fold_num += 1
         
-    print_final_summary(feature_ids, clf_scores, micro, macro, r2_all, 
-                        importance_clf, importance_rgr)
+    print_results(clf_scores, micro, macro, r2_all, mse_all, mrse_all)
 
 @plac.annotations(features_fpath=plac.Annotation('Partial Features', 
                                                          type=str),
@@ -133,9 +119,10 @@ def main(features_fpath, tag_categ_fpath, tseries_fpath, num_days_to_use,
     X, feature_ids, _ = \
             create_input_table(features_fpath, tseries_fpath, tag_categ_fpath,
                                num_days_to_use)
-    
+   
+    X = scale(X)
     y_clf = np.genfromtxt(assign_fpath)
-    y_regr = np.genfromtxt(tseries_fpath)[:,1:].sum(axis=1)
+    y_regr = scale(np.genfromtxt(tseries_fpath)[:,1:].sum(axis=1))
     run_experiment(X, y_clf, y_regr, feature_ids, out_foldpath)
 
 if __name__ == '__main__':

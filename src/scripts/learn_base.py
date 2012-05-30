@@ -43,8 +43,7 @@ CLFS_SPARSE = {'rbf_svm':svm.sparse.SVC(kernel='rbf', cache_size=CACHE_SIZE),
 RGRS = {'rbf_svm':svm.SVR(kernel='rbf', cache_size=CACHE_SIZE),
         'linear_svm':svm.SVR(kernel='linear'),
         'extra_trees':ensemble.ExtraTreesRegressor(n_estimators=20, 
-                                                   compute_importances=True,
-                                                   n_jobs=1)}
+                                                   compute_importances=True)}
 
 RGRS_SPARSE = {'rbf_svm':svm.sparse.SVR(kernel='rbf', cache_size=CACHE_SIZE),
                'linear_svm':svm.sparse.SVR(kernel='linear'),
@@ -108,7 +107,7 @@ def load_referrers(referrers_fpath, X = None, column_ids=None):
                 return hstack_if_possible(X, X_ref), \
                     update_col_ids(new_col_ids, column_ids)
 
-def load_time_series(tseries_fpath, num_pts = 3, X = None, column_ids=None):
+def load_time_series(tseries_fpath, num_pts = -1, X = None, column_ids=None):
     X_series = np.genfromtxt(tseries_fpath)[:,1:][:,range(num_pts)]
     
     new_col_ids = dict((i, 'POINT_%d'%pnt) \
@@ -143,7 +142,7 @@ def load_categories(tags_cat_fpath, X = None, column_ids=None):
             update_col_ids(new_col_ids, column_ids)
             
 def create_input_table(referrers_fpath = None, tseries_fpath = None, 
-                       tags_cat_fpath = None, num_pts = -1):
+                       tags_cat_fpath = None, num_pts = 3):
     
     X = None
     column_ids = None
