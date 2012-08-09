@@ -3,7 +3,7 @@ PY-KSC
 ======
 
 Implementation of the KSC time series clustering algorithm.
-See [_1] for details:
+See [1]_ for details:
 
 Dependencies
 ------------
