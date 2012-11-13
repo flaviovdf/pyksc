@@ -152,8 +152,8 @@ class TestDist(unittest.TestCase):
         array1 = np.array([2.0, 3.0, 4.0])
         array2 = np.array([3.0, 4.0, 0.0])
 
-        self.assertEqual(0, dist.shift_dist(array1, array1, 0))
-        self.assertEqual(0, dist.shift_dist(array2, array2, 0))
+        self.assertAlmostEqual(0, dist.shift_dist(array1, array1, 0))
+        self.assertAlmostEqual(0, dist.shift_dist(array2, array2, 0))
         
         expected = 2 / sqrt(29)
         self.assertAlmostEqual(expected, dist.shift_dist(array1, array2, 1, False))
@@ -181,8 +181,8 @@ class TestDist(unittest.TestCase):
         array1 = np.array([2.0, 3.0, 4.0])
         array2 = np.array([3.0, 4.0, 0.0])
 
-        self.assertEqual(0, dist.dist(array1, array1))
-        self.assertEqual(0, dist.dist(array2, array2))
+        self.assertAlmostEqual(0, dist.dist(array1, array1))
+        self.assertAlmostEqual(0, dist.dist(array2, array2))
         
         expected = 2 / sqrt(29)
         self.assertAlmostEqual(expected, dist.dist(array1, array2, True))
