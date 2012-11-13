@@ -44,28 +44,27 @@ def get_packages():
 def get_extensions():
     '''Get's all .pyx and.pxd files'''
     
-    base = 'pyksc'
     extensions = []
+    for base in ['pyksc']:
+        pyx_files = glob.glob(os.path.join(base, '*.pyx'))
 
-    pyx_files = glob.glob(os.path.join(base, '*.pyx'))
-    for pyx in pyx_files:
+        for pyx in pyx_files:    
+            pxd = pyx.replace('pyx', 'pxd')
+            module = pyx.replace('.pyx', '').replace('/', '.')
         
-        pxd = pyx.replace('pyx', 'pxd')
-        module = pyx.replace('.pyx', '').replace('/', '.')
-        
-        if os.path.exists(pxd):
-            ext_files = [pyx, pxd]
-        else:
-            ext_files = [pyx]
+            if os.path.exists(pxd):
+                ext_files = [pyx, pxd]
+            else:
+                ext_files = [pyx]
 
-        extension = Extension(module, ext_files,
-                              include_dirs=[numpy.get_include()],
-                              libraries=['blas'],
-                              extra_compile_args=['-fopenmp',
-                               '-msse', '-msse2', '-mfpmath=sse'],
-                              extra_link_args=['-fopenmp'])
+            extension = Extension(module, ext_files,
+                                  include_dirs=[numpy.get_include()],
+                                  libraries=['blas'],
+                                  extra_compile_args=['-fopenmp',
+                                   '-msse', '-msse2', '-mfpmath=sse'],
+                                  extra_link_args=['-fopenmp'])
         
-        extensions.append(extension)
+            extensions.append(extension)
     
     return extensions
 
@@ -75,7 +74,7 @@ if __name__ == "__main__":
     
     setup(
         cmdclass = {'build_ext': build_ext},
-        name             = 'ksc',
+        name             = 'pyksc',
         packages         = packages,
         ext_modules      = extensions
       )

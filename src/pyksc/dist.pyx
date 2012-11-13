@@ -46,11 +46,6 @@ cdef inline double cnorm(np.float_t* array1, Py_ssize_t size) nogil: \
 
 cdef inline double fmin(double a, double b) nogil: return a if a < b else b
 
-#A basic structure for returning a pair
-cdef struct ds_pair_t:
-    float min_dist
-    int best_shift
-
 #C functions
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -122,7 +117,7 @@ cdef np.float_t* cshift_roll(np.float_t* array, Py_ssize_t size, \
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef float cshift_dist(np.float_t* array1, np.float_t* array2, Py_ssize_t size, 
-                       int shift_amount, int rolling=0) nogil:
+                       int shift_amount, int rolling) nogil:
     '''
     Computes the distance between two time series using a given shift.
 
@@ -165,7 +160,7 @@ cdef float cshift_dist(np.float_t* array1, np.float_t* array2, Py_ssize_t size,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef ds_pair_t* cdist(np.float_t* array1, np.float_t* array2, \
-                      Py_ssize_t size, int rolling=0) nogil:
+                      Py_ssize_t size, int rolling) nogil:
     '''
     Computes the distance between two time series by searching for the optimal
     shifting parameter.
@@ -202,7 +197,7 @@ cdef ds_pair_t* cdist(np.float_t* array1, np.float_t* array2, \
 cdef tuple cdist_all(
         np.float_t* matrix1, np.float_t* matrix2,
         Py_ssize_t n_rows1, Py_ssize_t n_rows2, Py_ssize_t n_cols,
-        int rolling=0):
+        int rolling):
     '''
     Computes the distance between all pairs of rows in the given matrices.
     The elements of the first matrix are the ones which will be shifted.
