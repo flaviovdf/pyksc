@@ -1,4 +1,8 @@
 #-*- coding: utf8
+# cython: cdivision = True
+# cython: boundscheck = False
+# cython: wraparound = False
+
 '''
 Basic array functions are kept here. Also, in this module
 we implement the time series distance metric defined in [1].
@@ -15,6 +19,7 @@ from cpython cimport bool
 from libc.stdlib cimport abort
 from libc.stdlib cimport free
 from libc.stdlib cimport malloc
+from libc.stdio cimport printf
 
 from cython.parallel import parallel
 from cython.parallel import prange
@@ -27,40 +32,33 @@ np.import_array()
 
 #Basic math functions
 cdef extern from "math.h" nogil:
-    float sqrt(float)
+    double sqrt(double)
 
 cdef extern from "cblas.h" nogil:
-    float cblas_dnrm2(int N, double *X, int incX)
-    float cblas_ddot(int N, double *X, int incX, double *Y, int incY)
+    double cblas_dnrm2(int N, double *X, int incX)
+    double cblas_ddot(int N, double *X, int incX, double *Y, int incY)
 
 #Inlines, some basic blas vector stuff renamed for legacy and disabling gil
-cdef inline double cinner_prod(np.float_t* array1, np.float_t* array2, \
+cdef inline double cinner_prod(double *array1, double *array2, \
         Py_ssize_t size) nogil: \
-        return cblas_ddot(size, <double*>array1, 1, <double*>array2, 1)
+        return cblas_ddot(size, array1, 1, array2, 1)
 
-cdef inline double csqsum(np.float_t* array1, Py_ssize_t size) nogil: \
-        return cblas_dnrm2(size, <double*>array1, 1) ** 2
+cdef inline double csqsum(double *array1, Py_ssize_t size) nogil: \
+        return cblas_dnrm2(size, array1, 1) ** 2
 
-cdef inline double cnorm(np.float_t* array1, Py_ssize_t size) nogil: \
-        return cblas_dnrm2(size, <double*>array1, 1)
+cdef inline double cnorm(double *array1, Py_ssize_t size) nogil: \
+        return cblas_dnrm2(size, array1, 1)
 
-cdef inline double fmin(double a, double b) nogil: return a if a < b else b
-
-#C functions
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef np.float_t* cshift_drop(np.float_t* array, Py_ssize_t size, \
-                             int amount) nogil:
+#CDEF functions
+cdef double* cshift_drop(double[:] array, int amount) nogil:
     '''
     Shifts the array by N positions. This is similar to a binary shift where
     the element's fall of at the ends.
-
-    This is a C function which can only be used in the module. Use the python
-    wrapper when you need to execute this code.
     '''
+    cdef Py_ssize_t size = array.shape[0]
     
-    cdef np.float_t* shifted
-    shifted = <np.float_t*> malloc(size * sizeof(np.float_t))
+    cdef double *shifted
+    shifted = <double *> malloc(size * sizeof(double))
     if shifted == NULL:
         abort()
 
@@ -82,18 +80,12 @@ cdef np.float_t* cshift_drop(np.float_t* array, Py_ssize_t size, \
     
     return shifted
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef np.float_t* cshift_roll(np.float_t* array, Py_ssize_t size, \
-                             int amount) nogil:
+cdef double* cshift_roll(double[:] array, int amount) nogil:
     '''
     Shifts the array by N positions. This is a rolling shifts, where elements 
     come back at the other side of the array.
-
-    This is a C function which can only be used in the module. Use the python
-    wrapper when you need to execute this code.
     '''
+    cdef Py_ssize_t size = array.shape[0]
 
     cdef Py_ssize_t delta_shifted = 0
     cdef Py_ssize_t delta_array = 0
@@ -102,8 +94,8 @@ cdef np.float_t* cshift_roll(np.float_t* array, Py_ssize_t size, \
     else:
         delta_array = -amount
 
-    cdef np.float_t* shifted
-    shifted = <np.float_t*> malloc(size * sizeof(np.float_t))
+    cdef double *shifted
+    shifted = <double *> malloc(size * sizeof(double))
     if shifted == NULL:
         abort()
 
@@ -113,43 +105,38 @@ cdef np.float_t* cshift_roll(np.float_t* array, Py_ssize_t size, \
 
     return shifted
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef float cshift_dist(np.float_t* array1, np.float_t* array2, Py_ssize_t size, 
-                       int shift_amount, int rolling) nogil:
+cdef double cshift_dist(double[:] array1, double[:] array2, 
+                        int shift_amount, int rolling) nogil:
     '''
     Computes the distance between two time series using a given shift.
-
-    This is a C function which can only be used in the module. Use the python
-    wrapper when you need to execute this code.
     '''
+    cdef Py_ssize_t size = array1.shape[0]
     if size == 0:
         return 0
     
-    cdef np.float_t* shifted
+    cdef double *shifted
     if rolling:
-        shifted = cshift_roll(array2, size, shift_amount)
+        shifted = cshift_roll(array2, shift_amount)
     else:
-        shifted = cshift_drop(array2, size, shift_amount)
+        shifted = cshift_drop(array2, shift_amount)
     
     #computing scaling
-    cdef float alpha
-    cdef float sqsum_shift = csqsum(shifted, size)
+    cdef double alpha
+    cdef double sqsum_shift = csqsum(shifted, size)
     if sqsum_shift != 0:
-        alpha = cinner_prod(array1, shifted, size) / sqsum_shift
+        alpha = cinner_prod(&array1[0], shifted, size) / sqsum_shift
     else:
         alpha = 0
 
     #actual distance
     cdef Py_ssize_t i = 0
-    cdef float dist = 0
+    cdef double dist = 0
     for i in range(size):
         dist += (array1[i] - alpha * shifted[i]) ** 2
     
     free(shifted)
         
-    cdef float norm1 = cnorm(array1, size)
+    cdef double norm1 = cnorm(&array1[0], size)
     if norm1 != 0:
         return sqrt(dist) / norm1
     elif sqsum_shift != 0: #array one is all zeros, but 2 is not
@@ -157,17 +144,13 @@ cdef float cshift_dist(np.float_t* array1, np.float_t* array2, Py_ssize_t size,
     else: #both are all zeros
         return 0
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef ds_pair_t* cdist(np.float_t* array1, np.float_t* array2, \
-                      Py_ssize_t size, int rolling) nogil:
+cdef ds_pair_t* cdist(double[:] array1, double[:] array2, int rolling) nogil:
     '''
     Computes the distance between two time series by searching for the optimal
     shifting parameter.
-    
-    This is a C function which can only be used in the module. Use the python
-    wrapper when you need to execute this code.
     '''
+
+    cdef Py_ssize_t size = array1.shape[0]
     cdef ds_pair_t* rv = <ds_pair_t*>malloc(sizeof(ds_pair_t))
     if rv == NULL:
         abort()
@@ -177,13 +160,13 @@ cdef ds_pair_t* cdist(np.float_t* array1, np.float_t* array2, \
         rv.best_shift = 0
         return rv
 
-    cdef float distance
-    cdef float best_distance = 1
+    cdef double distance
+    cdef double best_distance = 1
     cdef Py_ssize_t best_shift = 0
 
     cdef Py_ssize_t i
     for i in range(-size + 1, size):
-        distance = cshift_dist(array1, array2, size, i, rolling)
+        distance = cshift_dist(array1, array2, i, rolling)
         if distance < best_distance:
             best_distance = distance
             best_shift = i
@@ -192,23 +175,19 @@ cdef ds_pair_t* cdist(np.float_t* array1, np.float_t* array2, \
     rv.best_shift = best_shift
     return rv
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef tuple cdist_all(
-        np.float_t* matrix1, np.float_t* matrix2,
-        Py_ssize_t n_rows1, Py_ssize_t n_rows2, Py_ssize_t n_cols,
-        int rolling):
+cdef tuple cdist_all(double[:, ::1] matrix1, double[:, ::1] matrix2, int rolling):
     '''
     Computes the distance between all pairs of rows in the given matrices.
     The elements of the first matrix are the ones which will be shifted.
-
-    This is a C function which can only be used in the module. Use the python
-    wrapper when you need to execute this code.
     '''
     
-    cdef np.ndarray[np.float_t, ndim=2] rv_dist = np.ndarray((n_rows1, n_rows2))
-    cdef np.ndarray[np.int_t, ndim=2] rv_shifts = np.ndarray((n_rows1, n_rows2),\
-            dtype=np.int)
+    cdef Py_ssize_t n_rows1 = matrix1.shape[0]
+    cdef Py_ssize_t n_rows2 = matrix2.shape[0]
+    cdef Py_ssize_t n_cols = matrix1.shape[1]
+    
+    cdef np.ndarray[double, ndim=2] rv_dist = np.ndarray((n_rows1, n_rows2))
+    cdef np.ndarray[int, ndim=2] rv_shifts = np.ndarray((n_rows1, n_rows2),
+            dtype='i')
 
     cdef ds_pair_t*** aux = <ds_pair_t***> malloc(n_rows1 * sizeof(ds_pair_t**))
     if aux == NULL:
@@ -222,8 +201,7 @@ cdef tuple cdist_all(
             abort()
 
         for j in range(n_rows2):
-            aux[i][j] = cdist(matrix1 + i * n_cols, matrix2 + j * n_cols,\
-                              n_cols, rolling)
+            aux[i][j] = cdist(matrix1[i], matrix2[j], rolling)
             rv_dist[i, j] = aux[i][j].min_dist
             rv_shifts[i, j] = aux[i][j].best_shift
 
@@ -234,8 +212,8 @@ cdef tuple cdist_all(
     return (rv_dist, rv_shifts)
 
 #Python wrappers
-def shift(np.ndarray[np.float_t, ndim=1, mode='c'] array not None, int amount,
-         bool rolling=False):
+def shift(np.ndarray[double, ndim=1, mode='c'] array not None, int amount,
+          bool rolling=False):
     '''
     Shifts the array by N positions. This is a rolling shifts, where elements 
     come back at the other side of the array. This method return a new array,
@@ -255,19 +233,19 @@ def shift(np.ndarray[np.float_t, ndim=1, mode='c'] array not None, int amount,
     '''
 
     cdef Py_ssize_t size = array.shape[0]
-    cdef np.float_t* shift_buff
+    cdef double *shift_buff
     if rolling:
-        shift_buff = cshift_roll(<np.float_t*> array.data, size, amount)
+        shift_buff = cshift_roll(array, amount)
     else:
-        shift_buff = cshift_drop(<np.float_t*> array.data, size, amount)
+        shift_buff = cshift_drop(array, amount)
 
-    cdef np.ndarray[np.float_t, ndim=1] rv = np.ndarray(size)
+    cdef np.ndarray[double, ndim=1] rv = np.ndarray(size)
     free(rv.data)
-    rv.data = <char*>shift_buff
+    rv.data = <char *>shift_buff
     return rv
 
-def inner_prod(np.ndarray[np.float_t, ndim=1, mode='c'] array1 not None,
-               np.ndarray[np.float_t, ndim=1, mode='c'] array2 not None):
+def inner_prod(np.ndarray[double, ndim=1, mode='c'] array1 not None,
+               np.ndarray[double, ndim=1, mode='c'] array2 not None):
     '''
     Return's the inner product between two arrays. It is a necessity for both 
     arrays to have the same shape.
@@ -282,9 +260,9 @@ def inner_prod(np.ndarray[np.float_t, ndim=1, mode='c'] array1 not None,
 
     assert array1.shape[0] == array2.shape[0]
     cdef Py_ssize_t size = array1.shape[0]
-    return cinner_prod(<np.float_t*>array1.data, <np.float_t*>array2.data, size)
+    return cinner_prod(&array1[0], &array2[0], size)
 
-def sqsum(np.ndarray[np.float_t, ndim=1, mode='c'] array not None):
+def sqsum(np.ndarray[double, ndim=1, mode='c'] array not None):
     '''
     Returns the squared sum of the elements in the given array.
 
@@ -294,10 +272,10 @@ def sqsum(np.ndarray[np.float_t, ndim=1, mode='c'] array not None):
         The array to sum the elements
     '''
     
-    return csqsum(<np.float_t*> array.data, array.shape[0])
+    return csqsum(&array[0], array.shape[0])
 
-def shift_dist(np.ndarray[np.float_t, ndim=1, mode='c'] array1 not None,
-               np.ndarray[np.float_t, ndim=1, mode='c'] array2 not None, 
+def shift_dist(np.ndarray[double, ndim=1, mode='c'] array1 not None,
+               np.ndarray[double, ndim=1, mode='c'] array2 not None, 
                int shift_amount, bool rolling=False):
     '''
     Computes the distance between two time series. This is an implementation
@@ -325,16 +303,14 @@ def shift_dist(np.ndarray[np.float_t, ndim=1, mode='c'] array1 not None,
         http://dl.acm.org/citation.cfm?id=1935863
     '''
     assert array1.shape[0] == array2.shape[0]
-    cdef Py_ssize_t size = array1.shape[0]
+    
     if rolling:
-        return cshift_dist(<np.float_t*>array1.data, <np.float_t*>array2.data,
-                           size, shift_amount, 1)
+        return cshift_dist(array1, array2, shift_amount, 1)
     else:
-        return cshift_dist(<np.float_t*>array1.data, <np.float_t*>array2.data, 
-                           size, shift_amount, 0)
+        return cshift_dist(array1, array2, shift_amount, 0)
 
-def dist(np.ndarray[np.float_t, ndim=1, mode='c'] array1 not None, 
-         np.ndarray[np.float_t, ndim=1, mode='c'] array2 not None,
+def dist(np.ndarray[double, ndim=1, mode='c'] array1 not None, 
+         np.ndarray[double, ndim=1, mode='c'] array2 not None,
          bool rolling=False):
     '''
     Computes the distance between two time series. This is an implementation
@@ -363,21 +339,19 @@ def dist(np.ndarray[np.float_t, ndim=1, mode='c'] array1 not None,
     '''
     assert array1.shape[0] == array2.shape[0]
 
-    cdef Py_ssize_t size = array1.shape[0]
     cdef ds_pair_t* rv
     cdef int roll = 0
     if rolling:
         roll = 1
 
     try:
-        rv = cdist(<np.float_t*>array1.data, <np.float_t*>array2.data, size, 
-                   roll)
+        rv = cdist(array1, array2, roll)
         return rv.min_dist
     finally:
         free(rv)
 
-def dist_all(np.ndarray[np.float_t, ndim=2, mode='c'] matrix1 not None,
-             np.ndarray[np.float_t, ndim=2, mode='c'] matrix2 not None,
+def dist_all(np.ndarray[double, ndim=2, mode='c'] matrix1 not None,
+             np.ndarray[double, ndim=2, mode='c'] matrix2 not None,
              bool rolling=False):
 
     '''
@@ -402,14 +376,8 @@ def dist_all(np.ndarray[np.float_t, ndim=2, mode='c'] matrix1 not None,
     '''
 
     assert matrix1.shape[1] == matrix2.shape[1]
-
-    cdef Py_ssize_t n_rows1 = matrix1.shape[0]
-    cdef Py_ssize_t n_rows2 = matrix2.shape[0]
-    cdef Py_ssize_t n_cols = matrix1.shape[1]
-    
     cdef int roll = 0
     if rolling:
         roll = 1
 
-    return cdist_all(<np.float_t*>matrix1.data, <np.float_t*>matrix2.data,
-                     n_rows1, n_rows2, n_cols, roll)
+    return cdist_all(matrix1, matrix2, roll)

@@ -20,11 +20,13 @@ from __future__ import division, print_function
 
 cimport cython
 cimport numpy as np
+
 import numpy as np
+np.import_array()
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def transform(np.ndarray[np.float_t, ndim=1] array):
+def transform(np.ndarray[double, ndim=1] array):
     '''
     Transform the array to a new form using the discrete harr
     transform operation. This is computing the average of consecutive 
@@ -32,7 +34,7 @@ def transform(np.ndarray[np.float_t, ndim=1] array):
 
     Arguments
     ---------
-    array: np.ndarray[np.float_t, ndim=1]
+    array: np.ndarray[double, ndim=1]
         the array to transform
 
     Returns
@@ -49,11 +51,11 @@ def transform(np.ndarray[np.float_t, ndim=1] array):
     else:
         new_dim = (n // 2) + 1
 
-    cdef np.ndarray[np.float_t, ndim=1] wavelet = np.zeros(new_dim)
-    cdef np.ndarray[np.float_t, ndim=1] coefficient = np.zeros(new_dim)
+    cdef np.ndarray[double, ndim=1] wavelet = np.zeros(new_dim)
+    cdef np.ndarray[double, ndim=1] coefficient = np.zeros(new_dim)
 
-    cdef float first
-    cdef float second
+    cdef double first
+    cdef double second
     cdef Py_ssize_t i = 0
     cdef Py_ssize_t j = 0
 
@@ -72,8 +74,8 @@ def transform(np.ndarray[np.float_t, ndim=1] array):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def inverse(np.ndarray[np.float_t, ndim=1] wavelet,
-            np.ndarray[np.float_t, ndim=1] coefficient):
+def inverse(np.ndarray[double, ndim=1] wavelet,
+            np.ndarray[double, ndim=1] coefficient):
     '''
     Given a wavelet and its coefficients this method can be used to 
     transform the wavelet to the original array.
@@ -99,8 +101,8 @@ def inverse(np.ndarray[np.float_t, ndim=1] wavelet,
 
     cdef np.ndarray[np.float_t, ndim=1] array = np.zeros(new_dim)
 
-    cdef float first
-    cdef float second
+    cdef double first
+    cdef double second
     cdef Py_ssize_t i = 0
     cdef Py_ssize_t j = 0
     for i in range(n):
