@@ -7,3 +7,6 @@ cdef struct ds_pair_t:
 
 #Distance function
 cdef ds_pair_t* cdist(double[:] array1, double[:] array2, int rolling) nogil
+
+cdef double cshift_dist(double[:] array1, double[:] array2, \
+        int shift_amount, int rolling) nogil

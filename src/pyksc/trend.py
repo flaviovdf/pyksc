@@ -2,11 +2,12 @@
 
 import _trend
 
+from sklearn.base import BaseEstimator
 from sklearn.base import ClassifierMixin
 
 import numpy as np
 
-class TrendLearner(ClassifierMixin):
+class TrendLearner(BaseEstimator, ClassifierMixin):
 
     def __init__(self, gamma, num_steps):
         self.gamma = gamma
