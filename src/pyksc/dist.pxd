@@ -6,7 +6,7 @@ cdef struct ds_pair_t:
     int best_shift
 
 #Distance function
-cdef ds_pair_t* cdist(double[:] array1, double[:] array2, int rolling) nogil
+cdef ds_pair_t* cdist(double[::1] array1, double[::1] array2, int rolling) nogil
 
-cdef double cshift_dist(double[:] array1, double[:] array2, \
+cdef double cshift_dist(double[::1] array1, double[::1] array2, \
         int shift_amount, int rolling) nogil

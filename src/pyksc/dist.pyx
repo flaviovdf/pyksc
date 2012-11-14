@@ -50,7 +50,7 @@ cdef inline double cnorm(double *array1, Py_ssize_t size) nogil: \
         return cblas_dnrm2(size, array1, 1)
 
 #CDEF functions
-cdef double* cshift_drop(double[:] array, int amount) nogil:
+cdef double* cshift_drop(double[::1] array, int amount) nogil:
     '''
     Shifts the array by N positions. This is similar to a binary shift where
     the element's fall of at the ends.
@@ -80,7 +80,7 @@ cdef double* cshift_drop(double[:] array, int amount) nogil:
     
     return shifted
 
-cdef double* cshift_roll(double[:] array, int amount) nogil:
+cdef double* cshift_roll(double[::1] array, int amount) nogil:
     '''
     Shifts the array by N positions. This is a rolling shifts, where elements 
     come back at the other side of the array.
@@ -105,7 +105,7 @@ cdef double* cshift_roll(double[:] array, int amount) nogil:
 
     return shifted
 
-cdef double cshift_dist(double[:] array1, double[:] array2, 
+cdef double cshift_dist(double[::1] array1, double[::1] array2, 
                         int shift_amount, int rolling) nogil:
     '''
     Computes the distance between two time series using a given shift.
@@ -144,7 +144,7 @@ cdef double cshift_dist(double[:] array1, double[:] array2,
     else: #both are all zeros
         return 0
 
-cdef ds_pair_t* cdist(double[:] array1, double[:] array2, int rolling) nogil:
+cdef ds_pair_t* cdist(double[::1] array1, double[::1] array2, int rolling) nogil:
     '''
     Computes the distance between two time series by searching for the optimal
     shifting parameter.

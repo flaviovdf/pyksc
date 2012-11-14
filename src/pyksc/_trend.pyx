@@ -22,7 +22,7 @@ cdef extern from "math.h" nogil:
 
 cdef inline double dmin(double a, double b) nogil: return a if a < b else b
 
-cdef double dist_to_reference(double[:] s, double[:] r) nogil:
+cdef double dist_to_reference(double[::1] s, double[::1] r) nogil:
     cdef Py_ssize_t n_obs = s.shape[0]
     cdef Py_ssize_t n_ref = r.shape[0]
 
@@ -36,7 +36,7 @@ cdef double dist_to_reference(double[:] s, double[:] r) nogil:
 
     return min_dist
 
-cdef void predict_one(double[:] s, double[:, ::1] R_pos,
+cdef void predict_one(double[::1] s, double[:, ::1] R_pos,
         double gamma, int num_steps, double[:, ::1] probs, 
         int store_at_row, int store_at_col) nogil:
 
@@ -44,7 +44,7 @@ cdef void predict_one(double[:] s, double[:, ::1] R_pos,
     cdef Py_ssize_t num_pos = R_pos.shape[0]
 
     cdef int num_detections = 0
-    cdef double[:] new_s = s[:num_steps]
+    cdef double[::1] new_s = s[:num_steps]
     
     cdef double prob = 0
     cdef Py_ssize_t i = 0
@@ -61,7 +61,7 @@ def predict(np.ndarray[double, ndim=2, mode='c'] X not None,
     cdef Py_ssize_t num_samples = X.shape[0]
     cdef Py_ssize_t num_points = X.shape[1]
 
-    cdef double[:] s
+    cdef double[::1] s
     cdef double[:, ::1] R_pos
     
     cdef double[:, ::1] probs = \
