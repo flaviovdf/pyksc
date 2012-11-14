@@ -27,7 +27,7 @@ class TestTrend(unittest.TestCase):
             y.append(0)
         
         
-        l = TrendLearner(1, 3)
+        l = TrendLearner(3, 1)
         l.fit(X, y)
 
         P = []
