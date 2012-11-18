@@ -105,14 +105,23 @@ cdef double* cshift_roll(double[::1] array, int amount) nogil:
 
     return shifted
 
-cdef double cshift_dist(double[::1] array1, double[::1] array2, 
+cdef dist_struct_t* cshift_dist(double[::1] array1, double[::1] array2, \
                         int shift_amount, int rolling) nogil:
     '''
     Computes the distance between two time series using a given shift.
     '''
     cdef Py_ssize_t size = array1.shape[0]
+   
+    #return val
+    cdef dist_struct_t* rv = <dist_struct_t*>malloc(sizeof(dist_struct_t))
+    if rv == NULL:
+        abort()
+    rv.shift = shift_amount
+ 
     if size == 0:
-        return 0
+        rv.dist = 0
+        rv.alpha = 0
+        return rv
     
     cdef double *shifted
     if rolling:
@@ -127,6 +136,8 @@ cdef double cshift_dist(double[::1] array1, double[::1] array2,
         alpha = cinner_prod(&array1[0], shifted, size) / sqsum_shift
     else:
         alpha = 0
+    
+    rv.alpha = alpha
 
     #actual distance
     cdef Py_ssize_t i = 0
@@ -138,41 +149,48 @@ cdef double cshift_dist(double[::1] array1, double[::1] array2,
         
     cdef double norm1 = cnorm(&array1[0], size)
     if norm1 != 0:
-        return sqrt(dist) / norm1
+        rv.dist = sqrt(dist) / norm1
     elif sqsum_shift != 0: #array one is all zeros, but 2 is not
-        return 1
+        rv.dist = 1
     else: #both are all zeros
-        return 0
+        rv.dist = 0
 
-cdef ds_pair_t* cdist(double[::1] array1, double[::1] array2, int rolling) nogil:
+    return rv
+
+cdef dist_struct_t* cdist(double[::1] array1, double[::1] array2, int rolling) \
+        nogil:
     '''
     Computes the distance between two time series by searching for the optimal
     shifting parameter.
     '''
 
     cdef Py_ssize_t size = array1.shape[0]
-    cdef ds_pair_t* rv = <ds_pair_t*>malloc(sizeof(ds_pair_t))
+    cdef dist_struct_t* rv = <dist_struct_t*>malloc(sizeof(dist_struct_t))
     if rv == NULL:
         abort()
 
+    rv.dist = 1
+    rv.shift = 0
+    rv.alpha = 0
     if size == 0:
-        rv.min_dist = 0
-        rv.best_shift = 0
+        rv.dist = 0
         return rv
 
-    cdef double distance
     cdef double best_distance = 1
     cdef Py_ssize_t best_shift = 0
 
+    cdef dist_struct_t* curr_dist
     cdef Py_ssize_t i
     for i in range(-size + 1, size):
-        distance = cshift_dist(array1, array2, i, rolling)
-        if distance < best_distance:
-            best_distance = distance
-            best_shift = i
+        curr_dist = cshift_dist(array1, array2, i, rolling)
+        if curr_dist.dist < best_distance:
+            free(rv)
+            rv = curr_dist
+            rv.shift = i
+            best_distance = rv.dist
+        else:
+            free(curr_dist)
 
-    rv.min_dist = best_distance
-    rv.best_shift = best_shift
     return rv
 
 cdef tuple cdist_all(double[:, ::1] matrix1, double[:, ::1] matrix2, int rolling):
@@ -189,21 +207,22 @@ cdef tuple cdist_all(double[:, ::1] matrix1, double[:, ::1] matrix2, int rolling
     cdef np.ndarray[int, ndim=2] rv_shifts = np.ndarray((n_rows1, n_rows2),
             dtype='i')
 
-    cdef ds_pair_t*** aux = <ds_pair_t***> malloc(n_rows1 * sizeof(ds_pair_t**))
+    cdef dist_struct_t*** aux = \
+            <dist_struct_t***> malloc(n_rows1 * sizeof(dist_struct_t**))
     if aux == NULL:
         abort()
 
     cdef Py_ssize_t i
     cdef Py_ssize_t j
     for i in prange(n_rows1, nogil=True, schedule='static'):
-        aux[i] = <ds_pair_t**> malloc(n_rows2 * sizeof(ds_pair_t*))
+        aux[i] = <dist_struct_t**> malloc(n_rows2 * sizeof(dist_struct_t*))
         if aux[i] == NULL:
             abort()
 
         for j in range(n_rows2):
             aux[i][j] = cdist(matrix1[i], matrix2[j], rolling)
-            rv_dist[i, j] = aux[i][j].min_dist
-            rv_shifts[i, j] = aux[i][j].best_shift
+            rv_dist[i, j] = aux[i][j].dist
+            rv_shifts[i, j] = aux[i][j].shift
 
             free(aux[i][j])
         free(aux[i])
@@ -304,10 +323,18 @@ def shift_dist(np.ndarray[double, ndim=1, mode='c'] array1 not None,
     '''
     assert array1.shape[0] == array2.shape[0]
     
-    if rolling:
-        return cshift_dist(array1, array2, shift_amount, 1)
-    else:
-        return cshift_dist(array1, array2, shift_amount, 0)
+    cdef dist_struct_t* rv
+    cdef double dist
+    try:
+        if rolling:
+            rv = cshift_dist(array1, array2, shift_amount, 1)
+        else:
+            rv = cshift_dist(array1, array2, shift_amount, 0)
+
+        dist = rv.dist
+        return dist
+    finally:
+        free(rv)
 
 def dist(np.ndarray[double, ndim=1, mode='c'] array1 not None, 
          np.ndarray[double, ndim=1, mode='c'] array2 not None,
@@ -339,14 +366,14 @@ def dist(np.ndarray[double, ndim=1, mode='c'] array1 not None,
     '''
     assert array1.shape[0] == array2.shape[0]
 
-    cdef ds_pair_t* rv
+    cdef dist_struct_t  *rv
     cdef int roll = 0
     if rolling:
         roll = 1
 
     try:
         rv = cdist(array1, array2, roll)
-        return rv.min_dist
+        return rv.dist
     finally:
         free(rv)
 

@@ -28,11 +28,11 @@ cdef double dist_to_reference(double[::1] s, double[::1] r) nogil:
 
     cdef double min_dist = 1
     cdef Py_ssize_t i
-    cdef dist.ds_pair_t* d
+    cdef dist.dist_struct_t *d
     
     for i in range(n_ref - n_obs + 1):
         d = dist.cdist(r[i:i + n_obs], s, 1)
-        min_dist = dmin(min_dist, d.min_dist)
+        min_dist = dmin(min_dist, d.dist)
         free(d)
 
     return min_dist
