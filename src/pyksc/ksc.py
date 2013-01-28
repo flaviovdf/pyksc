@@ -184,8 +184,6 @@ def ksc(tseries, num_clusters, n_iters=-1, n_runs=10):
     ---------
     tseries: a matrix of shape (number of time series, size of each series)
         The time series to cluster
-    initial_centroids: a matrix of shape (num. of clusters, size of time series)
-        The initial centroid estimates
     n_iters: int
         The number of iterations which the algorithm will run
     n_runs: int
@@ -254,8 +252,6 @@ def inc_ksc(tseries, num_clusters, n_iters=-1, num_wavelets=2):
     ---------
     tseries: a matrix of shape (number of time series, size of each series)
         The time series to cluster
-    initial_centroids: a matrix of shape (num. of clusters, size of time series)
-        The initial centroid estimates
     n_iters: int
         The number of iterations which the algorithm will run
     num_wavelets: int
