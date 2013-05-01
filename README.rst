@@ -37,6 +37,6 @@ $ python setup.py install
 
 References
 ----------
-.. [1]_ J. Yang and J. Leskovec, 
+.. [1] J. Yang and J. Leskovec, 
    "Patterns of Temporal Variation in Online Media" - WSDM'11  
    http://dl.acm.org/citation.cfm?id=1935863
