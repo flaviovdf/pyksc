@@ -1,16 +1,29 @@
-=======
 PY-KSC
 ======
 
 Implementation of the KSC time series clustering algorithm.
 See [1]_ for details:
 
-Dependencies
-------------
+Dependencies for library
+------------------------
    * Numpy
-   * Scipy
    * Cython
+
+Dependencies for scripts
+------------------------
+   * Scipy
    * Matplotlib
+
+How to install
+--------------
+
+Clone the repo. Make sure you have cython:
+
+$ pip install Cython
+
+Install
+
+$ python setup.py install
 
 References
 ----------
