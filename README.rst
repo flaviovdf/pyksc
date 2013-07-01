@@ -17,11 +17,25 @@ Dependencies for scripts
 How to install
 --------------
 
-Clone the repo. Make sure you have cython:
+Clone the repo
+
+::
+
+$ git clone https://github.com/flaviovdf/pyksc.git
+
+Make sure you have cython and numpy. If not run as root (or use your distros package manager)
+
+::
+
+$ pip install numpy
+
+::
 
 $ pip install Cython
 
 Install
+
+::
 
 $ python setup.py install
 
