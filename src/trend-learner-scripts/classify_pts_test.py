@@ -27,7 +27,7 @@ def main(tseries_fpath, centroids_fpath, test_fpath, assign_fpath, out_folder):
     
     C = np.genfromtxt(centroids_fpath)
     Xtest = ioutil.load_series(tseries_fpath, test_fpath)
-    y_train = np.genfromtxt(assign_fpath, dtype='i')
+    y_train = np.arange(C.shape[0])
 
     max_pts = Xtest.shape[1]
     for num_pts in range(1, max_pts + 1):

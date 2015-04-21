@@ -31,8 +31,14 @@ done
 #Precompute probabilities test
 for fold in $BASE_FOLD/*/; do
     mkdir -p $fold/probs-test/ 2> /dev/null
-    python classify_pts_test.py $IN $fold/cents.dat $fold/test.dat \
+    python classify_pts_test.py $IN $fold/ksc/cents.dat $fold/test.dat \
         $fold/ksc/assign.dat $fold/probs-test/
+done
+
+#Create the assign for the test
+for fold in $BASE_FOLD/*/; do
+    python create_test_assign.py $IN $fold/test.dat \
+        $fold/ksc/cents.dat > $fold/ksc/test_assign.dat
 done
 
 #Learn parameters train
