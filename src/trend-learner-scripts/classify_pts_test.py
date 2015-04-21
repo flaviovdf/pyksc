@@ -25,7 +25,7 @@ def fit(Xtrain, y_train, Xtest, num_pts):
 
 def main(tseries_fpath, centroids_fpath, test_fpath, assign_fpath, out_folder):
     
-    C = np.genfromtxt(tseries_fpath)
+    C = np.genfromtxt(centroids_fpath)
     Xtest = ioutil.load_series(tseries_fpath, test_fpath)
     y_train = np.genfromtxt(assign_fpath, dtype='i')
 
