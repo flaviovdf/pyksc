@@ -23,15 +23,16 @@ def fit(Xtrain, y_train, Xtest, num_pts):
         
     return probs
 
-def main(tseries_fpath, train_fpath, test_fpath, assign_fpath, out_folder):
+def main(tseries_fpath, centroids_fpath, test_fpath, assign_fpath, out_folder):
     
-    Xtrain = ioutil.load_series(tseries_fpath, train_fpath)
+    C = np.genfromtxt(tseries_fpath)
     Xtest = ioutil.load_series(tseries_fpath, test_fpath)
     y_train = np.genfromtxt(assign_fpath, dtype='i')
 
     max_pts = Xtest.shape[1]
-    for num_pts in [1, 25, 50, 75]:
-        probs = fit(Xtrain, y_train, Xtest, num_pts)
+    for num_pts in range(1, max_pts + 1):
+    #for num_pts in [1, 25, 50, 75]:
+        probs = fit(C, y_train, Xtest, num_pts)
 
         probs_fpath = os.path.join(out_folder, 'probs-%d-pts.dat' % num_pts)
         np.savetxt(probs_fpath, probs)
