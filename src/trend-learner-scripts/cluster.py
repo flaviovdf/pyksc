@@ -13,7 +13,7 @@ import plac
 def main(tseries_fpath, base_folder, k):
     k = int(k)
     
-    idx_fpath = os.path.join(base_folder, 'train.dat')
+    idx_fpath = os.path.join(os.path.join(base_folder, '..'), 'train.dat')
     X = ioutil.load_series(tseries_fpath, idx_fpath)
 
     cent, assign, shift, dists_cent = ksc.inc_ksc(X, k)
