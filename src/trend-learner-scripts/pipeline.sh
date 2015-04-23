@@ -55,3 +55,6 @@ for fold in $BASE_FOLD/*/; do
     mkdir -p $fold/cls-res-fitted-50 2> /dev/null
 done
 python classify_theta.py $IN $BASE_FOLD
+
+#Showing a small summary of results
+python summarize_results.py $IN $BASE_FOLD
