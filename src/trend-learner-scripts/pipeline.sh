@@ -7,7 +7,7 @@ fi
 
 IN=$1
 BASE_FOLD=$2
-K=4
+K=5
 
 #Creates output folder
 mkdir -p $BASE_FOLD 2> /dev/null
@@ -20,6 +20,9 @@ for fold in $BASE_FOLD/*/; do
     mkdir -p $fold/ksc 2> /dev/null
     python cluster.py $IN $fold/ksc $K
 done
+
+#Compute agreement between folds
+python sim_folds.py $IN $BASE_FOLD
 
 #Precompute probabilities train
 for fold in $BASE_FOLD/*/; do
