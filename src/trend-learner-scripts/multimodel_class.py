@@ -17,17 +17,17 @@ import os
 import plac
 import sys
 
-def load_features(features_folder, best_by):
+def load_features(features_folder, best_by, gamma_max):
     
     F = []
     matrices = {}
-    feats_fname = 'ev-%d-pts.dat'
+    feats_fname = 'year#%d.txt'
 
     for i  in xrange(best_by.shape[0]):
         bby = best_by[i]
 
         if bby == np.inf:
-            feats_file = os.path.join(features_folder, feats_fname % 100)
+            feats_file = os.path.join(features_folder, feats_fname % gamma_max)
         else:
             bby = int(bby)
             feats_file = os.path.join(features_folder, feats_fname % bby)
@@ -44,7 +44,7 @@ def load_features(features_folder, best_by):
 
     return np.asanyarray(F)
 
-def save_results(out_folder, base_name, y_pred):
+def save_results(out_folder, base_name, y_pred, y_true):
     folder = os.path.join(out_folder, base_name)
     
     try:
@@ -55,28 +55,32 @@ def save_results(out_folder, base_name, y_pred):
     out_file = os.path.join(folder, 'pred.dat')
     np.savetxt(out_file, y_pred)
 
-def run_classifier(out_folder, trend_probs, referrers, categs, y, train, test):
+    with open(os.path.join(folder, 'summ.dat'), 'w') as summ_file:
+        print(classification_report(y_true, y_pred), file=summ_file)
 
-    F = np.hstack((referrers, categs)) #static features
+def run_classifier(out_folder, trend_probs, referrers, y, train, test):
+
+    F = referrers #static features
     etree = create_grid_search('lr', n_jobs = 1)
     
     y_pred = trend_probs[test].argmax(axis=1)
-    save_results(out_folder, 'tl-base-lr', y_pred)
+    save_results(out_folder, 'tl-base-lr', y_pred, y[test])
+
     aux = clone(etree)
     aux.fit(F[train], y[train])
     y_pred = aux.predict(F[test])
-    save_results(out_folder, 'tree-feats', y_pred)
+    save_results(out_folder, 'tree-feats', y_pred, y[test])
     
     aux = clone(etree)
     aux.fit(trend_probs[train], y[train])
     y_pred = aux.predict(trend_probs[test])
-    save_results(out_folder, 'tree-probs', y_pred)
+    save_results(out_folder, 'tree-probs', y_pred, y[test])
     
     C = np.hstack((F, trend_probs))
     aux = clone(etree)
     aux.fit(C[train], y[train])
     y_pred = aux.predict(C[test])
-    save_results(out_folder, 'meta-combine', y_pred)
+    save_results(out_folder, 'meta-combine', y_pred, y[test])
 
     #stack_clf = stacking.Stacking(3, [etree], 'tree')
     #stack_clf.fit(F[train], y[train], trend_probs[train])
@@ -86,14 +90,14 @@ def run_classifier(out_folder, trend_probs, referrers, categs, y, train, test):
     stack_clf = stacking.Stacking(3, [etree], 'linear')
     stack_clf.fit(F[train], y[train], trend_probs[train])
     y_pred = stack_clf.predict(F[test], trend_probs[test])
-    save_results(out_folder, 'meta-stack-linear', y_pred)
+    save_results(out_folder, 'meta-stack-linear', y_pred, y[test])
     
     #stack_clf = stacking.Stacking(3, [etree], 'deco')
     #stack_clf.fit(F[train], y[train], trend_probs[train])
     #y_pred = stack_clf.predict(F[test], trend_probs[test])
     #save_results(out_folder, 'meta-stack-svm', y_pred)
 
-def run_one_folder(features_folder, fold_folder, results_name):
+def run_one_folder(features_folder, fold_folder, results_name, gamma_max):
 
     #File paths
     best_by_test_fpath = os.path.join(fold_folder, results_name,
@@ -150,19 +154,19 @@ def run_one_folder(features_folder, fold_folder, results_name):
     y_true[test] = y_true_test
     y_true[train] = y_true_train
     
-    referrers = load_features(features_folder, best_by)
-    categs = load_categories(tags_fpath)
+    referrers = load_features(features_folder, best_by, gamma_max)
 
     #Actual test, ufa
     run_classifier(os.path.join(fold_folder, results_name), 
-            trend_probs, referrers, categs, y_true, train, test)
+            trend_probs, referrers, y_true, train, test)
 
 @plac.annotations(
         features_folder=plac.Annotation('Folder with features', type=str),
         fold_folder=plac.Annotation('Folder with the train and test data', type=str),
-        results_name=plac.Annotation('Base name of the results folder', type=str))
-def main(features_folder, fold_folder, results_name):
-    run_one_folder(features_folder, fold_folder, results_name)
+        results_name=plac.Annotation('Base name of the results folder', type=str),
+        gamma_max=plac.Annotation('Gamma Max', type=int))
+def main(features_folder, fold_folder, results_name, gamma_max):
+    run_one_folder(features_folder, fold_folder, results_name, gamma_max)
 
 if __name__ == '__main__':
     sys.exit(plac.call(main))

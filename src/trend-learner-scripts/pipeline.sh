@@ -1,13 +1,15 @@
 #!/bin/bash
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
     echo "Please provide me with a time series file and an output folder"
     exit 1
 fi
 
 IN=$1
 BASE_FOLD=$2
-K=5
+FEATURES_FOLDER=$3
+
+K=2
 F1=0.5
 GAMMA_MAX=20
 
@@ -57,3 +59,8 @@ for fold in $BASE_FOLD/*/; do
     mkdir -p $fold/cls-res-fitted-$F1-$GAMMA_MAX 2> /dev/null
 done
 python classify_theta.py $IN $BASE_FOLD $F1 cls-res-fitted-$F1-$GAMMA_MAX $GAMMA_MAX $K
+
+#Adding static features
+for fold in $BASE_FOLD/*/; do
+    python multimodel_class.py $FEATURES_FOLDER $fold cls-res-fitted-$F1-$GAMMA_MAX $GAMMA_MAX
+done
