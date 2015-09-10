@@ -56,20 +56,21 @@ def run_fold(folder, tseries_fpath, min_pts, thetas, gamma_max, out_folder):
 
 def multi_proc_run(args):
 
-    folder, tseries_fpath, f1_target, gamma_max, results_sub_folder = args
-    fitted_thetas, fitted_min_pts = get_params(folder, f1_target)
+    folder, tseries_fpath, f1_target, gamma_max, results_sub_folder, max_k = args
+    fitted_thetas, fitted_min_pts = get_params(folder, f1_target, max_k)
 
     out_folder = os.path.join(folder, results_sub_folder)
     run_fold(folder, tseries_fpath, fitted_min_pts, fitted_thetas, 
                 gamma_max, out_folder)
 
-def main(tseries_fpath, base_folder, f1_target, results_sub_folder, gamma_max):
+def main(tseries_fpath, base_folder, f1_target, results_sub_folder, gamma_max, max_k):
     gamma_max = int(gamma_max)
+    max_k = int(max_k)
     
     f1_target = float(f1_target)
     folders = glob.glob(os.path.join(base_folder, 'fold-*/'))
     pool = multiprocessing.Pool()
-    pool.map(multi_proc_run, [(fold, tseries_fpath, f1_target, gamma_max, results_sub_folder) for fold in folders])
+    pool.map(multi_proc_run, [(fold, tseries_fpath, f1_target, gamma_max, results_sub_folder, max_k) for fold in folders])
     pool.terminate()
     pool.join()
 

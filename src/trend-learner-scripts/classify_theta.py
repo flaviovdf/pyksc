@@ -26,7 +26,7 @@ def pred(probs_folder, num_series, max_pts, min_pts, thetas):
     best_by = np.zeros(num_series) + np.inf
     confs = np.zeros(num_series)
     all_confs = np.zeros((num_series, len(thetas)))
-
+    
     for num_pts in range(1, max_pts + 1):
         fpath = os.path.join(probs_folder, FNAME) % num_pts
         P = np.loadtxt(fpath)
@@ -162,7 +162,7 @@ def run_fold(folder, tseries_fpath, min_pts, thetas, out_folder, gamma_max):
                  y_true, y_pred, confs, out_folder)
 
 
-def get_params(folder, threshold):
+def get_params(folder, threshold, max_k):
     
     assign = np.loadtxt(os.path.join(folder, 'ksc', 'assign.dat'), dtype='i')
     P = np.loadtxt(os.path.join(folder, 'probs', 'all-conf.dat'), dtype='f')
@@ -183,29 +183,30 @@ def get_params(folder, threshold):
                 thetas[k] = P[assign == k][:,i].mean()
                 min_pts[k] = i
     
-    #for k in set(assign):
-    #    if k not in thetas:
-    #        thetas[k] = 1.0 / len(set(assign))
-    #        min_pts[k] = 0
+    for k in xrange(max_k):
+        if k not in thetas:
+            thetas[k] = 1.0 / len(set(assign))
+            min_pts[k] = 0
 
     return thetas, min_pts
 
 def multi_proc_run(args):
 
-    folder, tseries_fpath, f1_target, gamma_max, results_sub_folder = args
-    fitted_thetas, fitted_min_pts = get_params(folder, float(f1_target))
+    folder, tseries_fpath, f1_target, gamma_max, results_sub_folder, max_k = args
+    fitted_thetas, fitted_min_pts = get_params(folder, float(f1_target), max_k)
 
     out_folder = os.path.join(folder, results_sub_folder)
     run_fold(folder, tseries_fpath, fitted_min_pts, fitted_thetas, 
                 out_folder, gamma_max)
 
-def main(tseries_fpath, base_folder, f1_target, results_sub_folder, gamma_max):
+def main(tseries_fpath, base_folder, f1_target, results_sub_folder, gamma_max, max_k):
     gamma_max = int(gamma_max)
+    max_k = int(max_k)
 
     folders = glob.glob(os.path.join(base_folder, 'fold-*/'))
     pool = multiprocessing.Pool()
     pool.map(multi_proc_run, \
-            [(fold, tseries_fpath, f1_target, gamma_max, results_sub_folder) for fold in folders])
+            [(fold, tseries_fpath, f1_target, gamma_max, results_sub_folder, max_k) for fold in folders])
     pool.terminate()
     pool.join()
 
