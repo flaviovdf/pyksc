@@ -7,7 +7,9 @@ fi
 
 IN=$1
 BASE_FOLD=$2
-K=5
+K=2
+F1=0.5
+GAMMA_MAX=15
 
 #Creates output folder
 mkdir -p $BASE_FOLD 2> /dev/null
@@ -28,14 +30,14 @@ python sim_folds.py $IN $BASE_FOLD
 for fold in $BASE_FOLD/*/; do
     mkdir -p $fold/probs/ 2> /dev/null
     python classify_pts.py $IN $fold/train.dat $fold/ksc/cents.dat \
-        $fold/ksc/assign.dat $fold/probs/
+        $fold/ksc/assign.dat $fold/probs/ $GAMMA_MAX
 done
 
 #Precompute probabilities test
 for fold in $BASE_FOLD/*/; do
     mkdir -p $fold/probs-test/ 2> /dev/null
     python classify_pts_test.py $IN $fold/ksc/cents.dat $fold/test.dat \
-        $fold/ksc/assign.dat $fold/probs-test/
+        $fold/ksc/assign.dat $fold/probs-test/ $GAMMA_MAX
 done
 
 #Create the assign for the test
@@ -46,15 +48,13 @@ done
 
 #Learn parameters train
 for fold in $BASE_FOLD/*/; do
-    mkdir -p $fold/cls-res-fitted-50-train 2> /dev/null
+    mkdir -p $fold/cls-res-fitted-$F1-$GAMMA_MAX-train 2> /dev/null
 done
-python classify_theta_train.py $IN $BASE_FOLD
+python classify_theta_train.py $IN $BASE_FOLD $F1 cls-res-fitted-$F1-$GAMMA_MAX-train $GAMMA_MAX
 
 #Learn parameters test
 for fold in $BASE_FOLD/*/; do
-    mkdir -p $fold/cls-res-fitted-50 2> /dev/null
+    mkdir -p $fold/cls-res-fitted-$F1-$GAMMA_MAX 2> /dev/null
 done
-python classify_theta.py $IN $BASE_FOLD
 
-#Showing a small summary of results
-python summarize_results.py $IN $BASE_FOLD
+python classify_theta.py $IN $BASE_FOLD $F1 cls-res-fitted-$F1-$GAMMA_MAX $GAMMA_MAX

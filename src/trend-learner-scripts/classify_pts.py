@@ -23,13 +23,17 @@ def fit(C, y_train, X, y_true, num_pts):
         
     return y_pred, probs
 
-def main(tseries_fpath, train_fpath, centroids_fpath, classes_fpath, out_folder):
+def main(tseries_fpath, train_fpath, centroids_fpath, classes_fpath, out_folder,
+	 gamma_max):
+    gamma_max = int(gamma_max)
+
     X = ioutil.load_series(tseries_fpath, train_fpath)
     C = np.genfromtxt(centroids_fpath, dtype='f')
     
     y_train = np.arange(C.shape[0])
     y_true = np.genfromtxt(classes_fpath)
-    max_pts = X.shape[1]
+    max_pts = gamma_max
+    #max_pts = X.shape[1]
 
     best_by = np.zeros(X.shape[0])
     min_conf = np.zeros(X.shape[0])

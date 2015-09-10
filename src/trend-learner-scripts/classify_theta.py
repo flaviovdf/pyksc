@@ -37,6 +37,7 @@ def pred(probs_folder, num_series, max_pts, min_pts, thetas):
         for i in xrange(num_series):
             score = curr_score[i]
             curr_cls = curr_pred[i]
+            
             theta = thetas[curr_cls]
             min_req = min_pts[curr_cls]
 
@@ -98,14 +99,16 @@ def save_results(X, peak_days, sum_views, pts_grid, theta_grid, best_by, all_con
         print(file=summ_file)
         
         print('Correct Only', file=summ_file)
-        aux_print(X, peak_days, sum_views, best_by, y_true, y_pred, confs, valid & correct, summ_file)
+        aux_print(X, peak_days, sum_views, best_by, y_true, y_pred, confs, correct, summ_file)
         print(file=summ_file)
         
         print('Incorrect Only', file=summ_file)
-        aux_print(X, peak_days, sum_views, best_by, y_true, y_pred, confs, valid & ~correct, summ_file)
+        aux_print(X, peak_days, sum_views, best_by, y_true, y_pred, confs, ~correct, summ_file)
         print(file=summ_file)
 
-        print(classification_report(y_true[valid], y_pred[valid]), 
+        #print(classification_report(y_true[valid], y_pred[valid]), 
+        #        file=summ_file)
+        print(classification_report(y_true, y_pred), 
                 file=summ_file)
         print(file=summ_file)
         print('# invalid %d' % (~valid).sum(), file=summ_file)
@@ -122,7 +125,7 @@ def save_results(X, peak_days, sum_views, pts_grid, theta_grid, best_by, all_con
     conf_fpath = os.path.join(out_folder, 'all-conf.dat')
     np.savetxt(conf_fpath, all_confs)
 
-def run_fold(folder, tseries_fpath, min_pts, thetas, out_folder):
+def run_fold(folder, tseries_fpath, min_pts, thetas, out_folder, gamma_max):
 
     try:
         os.makedirs(out_folder)
@@ -139,9 +142,8 @@ def run_fold(folder, tseries_fpath, min_pts, thetas, out_folder):
     y_true = np.loadtxt(assign_fpath)
     
     num_series = X.shape[0]
-    max_pts = X.shape[1]
+    max_pts = gamma_max
     
-    #Since we prune the first 100 lines of X we need to read other info
     peak_days = []
     sum_views = []
     with open(tseries_fpath) as tseries_file:
@@ -180,23 +182,30 @@ def get_params(folder, threshold):
             if score >= threshold and k not in thetas:
                 thetas[k] = P[assign == k][:,i].mean()
                 min_pts[k] = i
+    
+    #for k in set(assign):
+    #    if k not in thetas:
+    #        thetas[k] = 1.0 / len(set(assign))
+    #        min_pts[k] = 0
 
     return thetas, min_pts
 
 def multi_proc_run(args):
 
-    folder, tseries_fpath = args
-    fitted_thetas, fitted_min_pts = get_params(folder, .5)
+    folder, tseries_fpath, f1_target, gamma_max, results_sub_folder = args
+    fitted_thetas, fitted_min_pts = get_params(folder, float(f1_target))
 
-    out_folder = os.path.join(folder, 'cls-res-fitted-50')
+    out_folder = os.path.join(folder, results_sub_folder)
     run_fold(folder, tseries_fpath, fitted_min_pts, fitted_thetas, 
-                out_folder)
+                out_folder, gamma_max)
 
-def main(tseries_fpath, base_folder):
-     
+def main(tseries_fpath, base_folder, f1_target, results_sub_folder, gamma_max):
+    gamma_max = int(gamma_max)
+
     folders = glob.glob(os.path.join(base_folder, 'fold-*/'))
     pool = multiprocessing.Pool()
-    pool.map(multi_proc_run, [(fold, tseries_fpath) for fold in folders])
+    pool.map(multi_proc_run, \
+            [(fold, tseries_fpath, f1_target, gamma_max, results_sub_folder) for fold in folders])
     pool.terminate()
     pool.join()
 

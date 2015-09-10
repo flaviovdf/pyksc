@@ -17,7 +17,7 @@ import sys
 
 FNAME = 'probs-%d-pts.dat'
 
-def run_fold(folder, tseries_fpath, min_pts, thetas, out_folder):
+def run_fold(folder, tseries_fpath, min_pts, thetas, gamma_max, out_folder):
 
     try:
         os.makedirs(out_folder)
@@ -34,7 +34,7 @@ def run_fold(folder, tseries_fpath, min_pts, thetas, out_folder):
     y_true = np.loadtxt(assign_fpath)
     
     num_series = X.shape[0]
-    max_pts = X.shape[1]
+    max_pts = gamma_max
     
     #Since we prune the first 100 lines of X we need to read other info
     peak_days = []
@@ -56,18 +56,20 @@ def run_fold(folder, tseries_fpath, min_pts, thetas, out_folder):
 
 def multi_proc_run(args):
 
-    folder, tseries_fpath = args
-    fitted_thetas, fitted_min_pts = get_params(folder, .50)
+    folder, tseries_fpath, f1_target, gamma_max, results_sub_folder = args
+    fitted_thetas, fitted_min_pts = get_params(folder, f1_target)
 
-    out_folder = os.path.join(folder, 'cls-res-fitted-50-train')
+    out_folder = os.path.join(folder, results_sub_folder)
     run_fold(folder, tseries_fpath, fitted_min_pts, fitted_thetas, 
-                out_folder)
+                gamma_max, out_folder)
 
-def main(tseries_fpath, base_folder):
-     
+def main(tseries_fpath, base_folder, f1_target, results_sub_folder, gamma_max):
+    gamma_max = int(gamma_max)
+    
+    f1_target = float(f1_target)
     folders = glob.glob(os.path.join(base_folder, 'fold-*/'))
     pool = multiprocessing.Pool()
-    pool.map(multi_proc_run, [(fold, tseries_fpath) for fold in folders])
+    pool.map(multi_proc_run, [(fold, tseries_fpath, f1_target, gamma_max, results_sub_folder) for fold in folders])
     pool.terminate()
     pool.join()
 
