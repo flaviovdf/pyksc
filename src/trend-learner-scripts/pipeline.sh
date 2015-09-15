@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -lt 3 ]; then
-    echo "Please provide me with a time series file and an output folder"
+    echo "Please provide me with a time series file, an output folder and a features folder"
     exit 1
 fi
 
