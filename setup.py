@@ -15,6 +15,11 @@ from Cython.Distutils import build_ext
 SOURCE = 'src/'
 os.chdir(SOURCE)
 
+import platform
+if platform.system() == 'Darwin':
+    os.environ["CC"] = "gcc-6"
+    os.environ["CXX"] = "gcc-6"
+
 if sys.version_info[:2] < (2, 7):
     print('Requires Python version 2.7 or later (%d.%d detected).' %
           sys.version_info[:2])

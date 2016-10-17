@@ -9,7 +9,7 @@ from scipy import sparse
 
 from sklearn import neighbors
 from sklearn import ensemble
-from sklearn import grid_search
+from sklearn import model_selection
 from sklearn import linear_model
 from sklearn import svm
 
@@ -75,7 +75,7 @@ def _get_classifier_and_params(name):
 
 def create_grid_search(name, n_jobs=-1):
     learner, params = _get_classifier_and_params(name)    
-    return grid_search.GridSearchCV(learner, params, cv=3, refit=True, 
+    return model_selection.GridSearchCV(learner, params, cv=3, refit=True, 
                                     n_jobs=n_jobs)
 
 def hstack_if_possible(X, Y):

@@ -6,7 +6,7 @@ from __future__ import division, print_function
 from learn_base import create_grid_search
 
 from sklearn import base
-from sklearn import cross_validation
+from sklearn import model_selection
 from sklearn import linear_model
 from sklearn import tree
 
@@ -52,8 +52,8 @@ class Stacking(object):
 
         P = np.zeros((X.shape[0], self.num_classes * num_base_models))
 
-        kfold = cross_validation.StratifiedKFold(y, self.num_splits)
-        for train, test in kfold:
+        kfold = model_selection.StratifiedKFold(self.num_splits)
+        for train, test in kfold.split(X, y):
             for i, base_model in enumerate(self.base_classifiers):
                 base_model.fit(X[train], y[train])
 

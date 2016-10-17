@@ -3,7 +3,6 @@
 from __future__ import division, print_function
 
 from sklearn.base import clone
-from sklearn.cross_validation import StratifiedKFold
 from sklearn.metrics import classification_report
 
 from learn_base import create_grid_search

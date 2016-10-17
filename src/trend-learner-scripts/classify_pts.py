@@ -31,7 +31,7 @@ def main(tseries_fpath, train_fpath, centroids_fpath, classes_fpath, out_folder,
     C = np.genfromtxt(centroids_fpath, dtype='f')
     
     y_train = np.arange(C.shape[0])
-    y_true = np.genfromtxt(classes_fpath)
+    y_true = np.genfromtxt(classes_fpath, dtype='i')
     max_pts = gamma_max
     #max_pts = X.shape[1]
 
