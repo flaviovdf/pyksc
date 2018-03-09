@@ -39,6 +39,12 @@ Install
 
 $ python setup.py install
 
+If you see the following error '/usr/bin/ld: cannot find -lblas` on linux, try installing the following two libraries: 
+::
+$ sudo apt-get install libblas-dev liblapack-dev
+
+
+
 References
 ----------
 .. [1] J. Yang and J. Leskovec, 
